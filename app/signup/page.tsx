@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { UserPlus, Mail, Lock, User } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
+      // Step 1: Create the user account
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,9 +53,24 @@ export default function SignupPage() {
         return;
       }
 
+      // Step 2: Automatically log in the user
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInResult?.error) {
+        setError('Account created but login failed. Please login manually.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 3: Redirect to home page
       router.push('/');
       router.refresh();
     } catch (err) {
+      console.error('Signup error:', err);
       setError('Something went wrong');
       setIsLoading(false);
     }

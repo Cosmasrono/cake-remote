@@ -149,6 +149,72 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         </div>
       </motion.section>
 
+      {/* Featured Courses Section */}
+      <motion.section
+        className="py-20 bg-gradient-to-r from-purple-50 to-pink-50"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.6 }}
+        variants={containerVariants}
+      >
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <motion.h2
+            className="text-4xl font-bold text-gray-800 mb-12"
+            variants={itemVariants}
+          >
+            Our Featured Courses
+          </motion.h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Course Card 1 */}
+            <motion.div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition duration-300 ease-in-out" variants={itemVariants}>
+              <img src="/images/course1.jpg" alt="Beginner Baking Course" className="rounded-xl mb-6 w-full h-48 object-cover" />
+              <h3 className="text-2xl font-bold mb-3 text-purple-700">Beginner's Delight: Baking Fundamentals</h3>
+              <p className="text-gray-600 mb-4">Master the basics of baking, from essential techniques to delicious recipes.</p>
+              <button
+                onClick={() => setActiveTab('school')}
+                className="bg-purple-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-purple-700 transition transform hover:scale-105"
+              >
+                View Course
+              </button>
+            </motion.div>
+
+            {/* Course Card 2 */}
+            <motion.div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition duration-300 ease-in-out" variants={itemVariants}>
+              <img src="/images/course2.jpg" alt="Advanced Cake Decoration" className="rounded-xl mb-6 w-full h-48 object-cover" />
+              <h3 className="text-2xl font-bold mb-3 text-pink-700">Art of Decor: Advanced Cake Techniques</h3>
+              <p className="text-gray-600 mb-4">Elevate your cake decorating skills with intricate designs and professional finishes.</p>
+              <button
+                onClick={() => setActiveTab('school')}
+                className="bg-pink-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-pink-700 transition transform hover:scale-105"
+              >
+                View Course
+              </button>
+            </motion.div>
+
+            {/* Course Card 3 */}
+            <motion.div className="bg-white p-8 rounded-2xl shadow-lg transform hover:scale-105 transition duration-300 ease-in-out" variants={itemVariants}>
+              <img src="/images/course3.jpg" alt="Pastry Arts Masterclass" className="rounded-xl mb-6 w-full h-48 object-cover" />
+              <h3 className="text-2xl font-bold mb-3 text-purple-700">Professional Pastry Arts Masterclass</h3>
+              <p className="text-gray-600 mb-4">A comprehensive program for aspiring pastry chefs, covering a wide range of desserts.</p>
+              <button
+                onClick={() => setActiveTab('school')}
+                className="bg-purple-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-purple-700 transition transform hover:scale-105"
+              >
+                View Course
+              </button>
+            </motion.div>
+          </div>
+          <motion.button
+            onClick={() => setActiveTab('school')}
+            className="mt-12 bg-pink-600 text-white px-10 py-4 rounded-full font-bold text-lg shadow-lg hover:bg-pink-700 transition transform hover:scale-105"
+            variants={itemVariants}
+          >
+            Explore All Courses
+          </motion.button>
+        </div>
+      </motion.section>
+
       {/* Testimonials Section */}
       <motion.section
         className="py-20 bg-gray-50"

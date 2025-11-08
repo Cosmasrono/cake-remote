@@ -1,7 +1,7 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { redirect } from 'next/navigation';
+import { getSession, isAdmin } from '@/app/lib/auth';
+import { PrismaClient } from '@prisma/client';
+import React from 'react';
 import {
   FaBirthdayCake,
   FaGraduationCap,
@@ -18,91 +18,47 @@ import {
   FaUserCircle,
   FaArrowUp,
   FaArrowDown,
-  FaEllipsisV
+  FaEllipsisV,
 } from 'react-icons/fa';
+import AdminCard from '@/app/components/AdminCard'; // New import
+import StatCard from '@/app/components/StatCard';   // New import
 
-interface AdminCardProps {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  route: string;
-  gradient: string;
-  count?: number;
-}
+const prisma = new PrismaClient();
 
-function AdminCard({ title, description, icon, route, gradient, count }: AdminCardProps) {
-  const router = useRouter();
+export default async function AdminDashboardPage() {
+  const session = await getSession();
 
-  return (
-    <button
-      onClick={() => router.push(route)}
-      className="group relative bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100"
-    >
-      {/* Gradient Background on Hover */}
-      <div className={`absolute inset-0 ${gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-      
-      <div className="relative p-6">
-        {/* Icon Section */}
-        <div className="flex items-center justify-between mb-4">
-          <div className={`w-14 h-14 rounded-xl ${gradient} flex items-center justify-center text-white text-2xl shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
-            {icon}
-          </div>
-          {count !== undefined && (
-            <span className="text-2xl font-bold text-gray-800">{count}</span>
-          )}
-        </div>
-        
-        {/* Text Section */}
-        <h3 className="text-lg font-semibold text-gray-800 mb-2 group-hover:text-gray-900">
-          {title}
-        </h3>
-        <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors">
-          {description}
-        </p>
-        
-        {/* Arrow Indicator */}
-        <div className="mt-4 flex items-center text-gray-400 group-hover:text-gray-600 transition-colors">
-          <span className="text-xs font-medium mr-1">Manage</span>
-          <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
-    </button>
-  );
-}
+  if (!session || !(await isAdmin())) {
+    redirect('/login');
+  }
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  change: number;
-  icon: React.ReactNode;
-  gradient: string;
-}
-
-function StatCard({ title, value, change, icon, gradient }: StatCardProps) {
-  const isPositive = change >= 0;
-  
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl ${gradient} flex items-center justify-center text-white text-xl shadow-md`}>
-          {icon}
-        </div>
-        <div className={`flex items-center text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {isPositive ? <FaArrowUp className="mr-1" /> : <FaArrowDown className="mr-1" />}
-          {Math.abs(change)}%
-        </div>
-      </div>
-      <h4 className="text-gray-500 text-sm font-medium mb-1">{title}</h4>
-      <p className="text-3xl font-bold text-gray-800">{value}</p>
-    </div>
-  );
-}
-
-export default function AdminDashboardPage() {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [
+    usersCount,
+    ordersCount,
+    cartItemsCount,
+    allCakes,
+    allCourses,
+    allUsers,
+    pendingEnrollments,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.order.count(),
+    prisma.cart.count(),
+    prisma.cake.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.course.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.enrollment.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        user: { select: { name: true, email: true } },
+        course: { select: { title: true } },
+      },
+      orderBy: { enrolledAt: 'asc' },
+    }),
+  ]);
 
   const adminSections = [
     {
@@ -110,103 +66,105 @@ export default function AdminDashboardPage() {
       description: 'Manage your cake catalog and inventory',
       icon: <FaBirthdayCake />,
       route: '/admin/cakes',
-      gradient: 'bg-gradient-to-br from-pink-500 to-rose-600'
+      gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
     },
     {
       title: 'Courses',
       description: 'Manage training programs and schedules',
       icon: <FaGraduationCap />,
       route: '/admin/courses',
-      gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600'
+      gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+      count: allCourses.length, // Display total courses count
     },
     {
       title: 'User Management',
       description: 'Control user accounts and permissions',
       icon: <FaUsers />,
       route: '/admin/users',
-      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600'
+      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+      count: usersCount, // Display total users count
     },
     {
       title: 'Order Management',
       description: 'Track and fulfill customer orders',
       icon: <FaShoppingCart />,
       route: '/admin/orders',
-      gradient: 'bg-gradient-to-br from-purple-500 to-violet-600'
+      gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
+      count: ordersCount, // Display total orders count
     },
     {
       title: 'Analytics Hub',
       description: 'View insights and performance metrics',
       icon: <FaChartLine />,
       route: '/admin/analytics',
-      gradient: 'bg-gradient-to-br from-cyan-500 to-blue-600'
+      gradient: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     },
     {
       title: 'Media Gallery',
       description: 'Organize photos and visual content',
       icon: <FaImages />,
       route: '/admin/gallery',
-      gradient: 'bg-gradient-to-br from-orange-500 to-amber-600'
+      gradient: 'bg-gradient-to-br from-orange-500 to-amber-600',
     },
     {
       title: 'Blog & News',
       description: 'Publish articles and updates',
       icon: <FaNewspaper />,
       route: '/admin/blog',
-      gradient: 'bg-gradient-to-br from-teal-500 to-emerald-600'
+      gradient: 'bg-gradient-to-br from-teal-500 to-emerald-600',
     },
     {
       title: 'Promotions',
       description: 'Create campaigns and discount codes',
       icon: <FaTags />,
       route: '/admin/promotions',
-      gradient: 'bg-gradient-to-br from-red-500 to-pink-600'
+      gradient: 'bg-gradient-to-br from-red-500 to-pink-600',
     },
     {
       title: 'Customer Reviews',
       description: 'Monitor feedback and testimonials',
       icon: <FaComments />,
       route: '/admin/reviews',
-      gradient: 'bg-gradient-to-br from-yellow-500 to-orange-600'
+      gradient: 'bg-gradient-to-br from-yellow-500 to-orange-600',
     },
     {
       title: 'System Settings',
       description: 'Configure platform preferences',
       icon: <FaCog />,
       route: '/admin/settings',
-      gradient: 'bg-gradient-to-br from-slate-500 to-gray-600'
-    }
+      gradient: 'bg-gradient-to-br from-slate-500 to-gray-600',
+    },
   ];
 
-  // TODO: Replace with dynamic data from API/database
   const stats = [
     {
-      title: 'Total Revenue',
-      value: '---',
-      change: 0,
-      icon: <FaChartLine />,
-      gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600'
-    },
-    {
-      title: 'Active Orders',
-      value: '---',
-      change: 0,
-      icon: <FaShoppingCart />,
-      gradient: 'bg-gradient-to-br from-purple-500 to-violet-600'
-    },
-    {
-      title: 'Total Products',
-      value: '---',
-      change: 0,
-      icon: <FaBirthdayCake />,
-      gradient: 'bg-gradient-to-br from-pink-500 to-rose-600'
-    },
-    {
-      title: 'Active Users',
-      value: '---',
-      change: 0,
+      title: 'Total Users',
+      value: usersCount,
+      change: 0, // Placeholder
       icon: <FaUsers />,
-      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600'
-    }
+      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+    },
+    {
+      title: 'Total Orders',
+      value: ordersCount,
+      change: 0, // Placeholder
+      icon: <FaShoppingCart />,
+      gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
+    },
+    {
+      title: 'Total Cakes',
+      value: allCakes.length,
+      change: 0, // Placeholder
+      icon: <FaBirthdayCake />,
+      gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
+    },
+    {
+      title: 'Pending Enrollments',
+      value: pendingEnrollments.length,
+      change: 0, // Placeholder
+      icon: <FaGraduationCap />,
+      gradient: 'bg-gradient-to-br from-orange-500 to-amber-600',
+    },
   ];
 
   return (
@@ -226,15 +184,13 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar (removed client-side state) */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
               <div className="relative w-full">
                 <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search anything..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -301,43 +257,78 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
+        {/* Pending Enrollments Table */}
+        <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
+          <div className="p-6 border-b">
+            <h2 className="text-2xl font-bold text-gray-800">Pending Enrollments</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled At</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {pendingEnrollments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No pending enrollments.</td>
+                  </tr>
+                ) : (
+                  pendingEnrollments.map((enrollment) => (
+                    <tr key={enrollment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">{enrollment.course.title}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{enrollment.user.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{enrollment.user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{enrollment.phoneNumber}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(enrollment.enrolledAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <form action="/api/admin/enrollments/approve" method="POST" className="inline-block mr-2">
+                          <input type="hidden" name="enrollmentId" value={enrollment.id} />
+                          <button
+                            type="submit"
+                            className="text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-md"
+                          >
+                            Approve
+                          </button>
+                        </form>
+                        <form action="/api/admin/enrollments/reject" method="POST" className="inline-block">
+                          <input type="hidden" name="enrollmentId" value={enrollment.id} />
+                          <button
+                            type="submit"
+                            className="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-md"
+                          >
+                            Reject
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Recent Activity Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-800">Recent Activity</h3>
             <button className="text-pink-600 hover:text-pink-700 text-sm font-medium">View All</button>
           </div>
-          {/* TODO: Replace with dynamic activity data from API/database */}
           <div className="space-y-4">
             <div className="text-center py-8 text-gray-400">
               <p>No recent activity to display</p>
               <p className="text-sm mt-2">Activity will appear here once actions are performed</p>
             </div>
           </div>
-          
-          {/* Commented out hardcoded data - replace with dynamic data
-          <div className="space-y-4">
-            {[
-              { action: 'New order placed', time: '2 minutes ago', icon: <FaShoppingCart />, color: 'bg-purple-100 text-purple-600' },
-              { action: 'User registered', time: '15 minutes ago', icon: <FaUsers />, color: 'bg-blue-100 text-blue-600' },
-              { action: 'Product updated', time: '1 hour ago', icon: <FaBirthdayCake />, color: 'bg-pink-100 text-pink-600' },
-              { action: 'New review posted', time: '3 hours ago', icon: <FaComments />, color: 'bg-yellow-100 text-yellow-600' }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center space-x-4 p-4 hover:bg-gray-50 rounded-xl transition-colors">
-                <div className={`w-10 h-10 rounded-lg ${activity.color} flex items-center justify-center`}>
-                  {activity.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{activity.action}</p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
-                </div>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <FaEllipsisV />
-                </button>
-              </div>
-            ))}
-          </div>
-          */}
         </div>
       </div>
     </div>

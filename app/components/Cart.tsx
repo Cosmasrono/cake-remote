@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, X, Minus, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { formatToKsh } from '@/app/lib/currency'; // Import the currency formatter
 
 interface CartItem {
   id: string;
@@ -101,16 +102,16 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                       className="w-24 h-24 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <h3 className="font-bold text-lg">{item.cakeName}</h3>
+                      <h3 className="font-bold text-lg text-gray-800">{item.cakeName}</h3>
                       <p className="text-gray-600 text-sm">{item.cakeType}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-pink-600 font-bold">${item.price.toFixed(2)}</span>
+                        <span className="text-pink-600 font-bold text-lg">{formatToKsh(item.price)}</span>
                         <span className="text-gray-600">Qty: {item.quantity}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => removeFromCart(item.id)}
-                      className="p-2 hover:bg-red-100 rounded-lg h-fit"
+                      className="p-2 hover:bg-red-100 rounded-lg h-fit transition-colors duration-200"
                     >
                       <Trash2 className="w-5 h-5 text-red-600" />
                     </button>
@@ -122,14 +123,14 @@ export default function Cart({ isOpen, onClose }: CartProps) {
 
           {/* Footer */}
           {cartItems.length > 0 && (
-            <div className="border-t p-6 space-y-4">
+            <div className="border-t border-gray-200 p-6 space-y-4 bg-white">
               <div className="flex items-center justify-between text-xl font-bold">
                 <span>Total:</span>
-                <span className="text-pink-600">${total.toFixed(2)}</span>
+                <span className="text-pink-600 text-2xl">{formatToKsh(total)}</span>
               </div>
               <button 
                 onClick={handleCheckout}
-                className="w-full bg-pink-600 text-white py-4 rounded-lg font-semibold hover:bg-pink-700 transition"
+                className="w-full bg-pink-600 text-white py-4 rounded-lg font-semibold hover:bg-pink-700 transition-colors duration-200 transform hover:scale-105"
               >
                 Proceed to Checkout
               </button>

@@ -12,11 +12,17 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      String   @default("user")
+  role      UserRole   @default(USER) // Changed to use UserRole enum
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   Enrollment Enrollment[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
 }
 
 model Cake {
@@ -73,6 +79,9 @@ model Enrollment {
   user        User             @relation(fields: [userId], references: [id])
   courseId    String           @db.ObjectId
   course      Course           @relation(fields: [courseId], references: [id])
+  email       String?
+  name        String?
+  phoneNumber String?
   status      EnrollmentStatus @default(PENDING)
   enrolledAt  DateTime         @default(now())
   paymentInfo String? // Placeholder for payment gateway transaction ID or similar

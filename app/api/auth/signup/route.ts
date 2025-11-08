@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate password length
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -31,18 +39,17 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user (role defaults to "user" unless specified)
+    // Create user
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: role === 'admin' ? 'admin' : 'user'
+        role: role || 'USER' // Default role to USER if not provided
       }
     });
 
-    // Remove token creation and cookie setting, as NextAuth handles sessions
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         message: 'User created successfully',
         user: {
@@ -54,13 +61,13 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-
-    return response;
   } catch (error) {
     console.error('Signup error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }

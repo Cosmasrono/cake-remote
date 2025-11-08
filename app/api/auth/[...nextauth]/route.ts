@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { verifyPassword } from "@/app/lib/auth";
 import { getUserByEmail } from "@/app/lib/data";
 
-export const authOptions = NextAuth({
+export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
@@ -21,20 +21,26 @@ export const authOptions = NextAuth({
           type: "password",
         },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials.password) {
-          return null;
+          throw new Error("Missing email or password");
         }
 
         const user = await getUserByEmail(credentials.email);
 
-        if (!user || !(await verifyPassword(credentials.password, user.password))) {
-          return null;
+        if (!user) {
+          throw new Error("No user found with this email");
+        }
+
+        const isValid = await verifyPassword(credentials.password, user.password);
+        
+        if (!isValid) {
+          throw new Error("Invalid password");
         }
 
         return {
           id: user.id,
-          name: user.name, // Make sure to return name
+          name: user.name,
           email: user.email,
           role: user.role,
         };
@@ -65,6 +71,7 @@ export const authOptions = NextAuth({
     signIn: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
 
-export { authOptions as GET, authOptions as POST };
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };

@@ -6,7 +6,8 @@ export default withAuth(
     const token = req.nextauth.token;
     const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
 
-    if (isAdminRoute && token?.role !== 'admin') {
+    // Check for ADMIN role (matching UserRole.ADMIN from Prisma schema)
+    if (isAdminRoute && token?.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/', req.url));
     }
 

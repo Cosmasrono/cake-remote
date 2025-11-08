@@ -27,12 +27,8 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
     }
   };
 
-  const handleAdminLogin = () => {
-    router.push('/admin/login');
-  };
-
-  // Safe check for admin role
-  const isAdmin = session?.user?.role === 'admin';
+  // Check for ADMIN role (matching UserRole.ADMIN from Prisma)
+  const isAdmin = session?.user?.role === 'ADMIN';
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || 'User';
 
   return (
@@ -99,8 +95,8 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
             ) : session?.user ? (
               // User is logged in
               <div className="flex items-center gap-3">
-                {/* Admin Dashboard Button - Visible to all logged-in users */}
-                {session?.user && (
+                {/* Admin Dashboard Button - Only visible to ADMIN users */}
+                {isAdmin && (
                   <button
                     onClick={() => router.push('/admin/dashboard')}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold shadow-md"
@@ -117,7 +113,11 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
                   <span className="text-sm font-medium text-gray-700">
                     {userName}
                   </span>
-                  {/* Removed isAdmin check - visible to all logged-in users */}
+                  {isAdmin && (
+                    <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                      Admin
+                    </span>
+                  )}
                 </div>
                 
                 {/* Logout Button */}
@@ -138,13 +138,6 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
                 >
                   <User className="w-5 h-5" />
                   Login
-                </button>
-                <button
-                  onClick={handleAdminLogin}
-                  className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold shadow-md"
-                >
-                  <Shield className="w-5 h-5" />
-                  Admin Login
                 </button>
               </div>
             )}

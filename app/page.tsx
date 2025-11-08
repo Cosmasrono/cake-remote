@@ -12,6 +12,7 @@ import Toast from './components/Toast';
 import Cart from './components/Cart';
 import CourseTab from './components/CourseTab';
 import { useSession } from 'next-auth/react';
+import EnrollmentPopup from './components/EnrollmentPopup'; // New import
 
 export default function CakeSchoolWebsite() {
   const { data: session } = useSession(); 
@@ -19,6 +20,8 @@ export default function CakeSchoolWebsite() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showEnrollmentPopup, setShowEnrollmentPopup] = useState(false); // New state
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null); // New state
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
@@ -53,30 +56,41 @@ export default function CakeSchoolWebsite() {
   };
 
   const handleEnrollCourse = async (courseId: string) => {
-    setIsSubmitting(true);
-    
     if (!session?.user?.id) {
       showToast('Please log in to enroll in a course.', 'error');
-      setIsSubmitting(false);
       return;
     }
+    setSelectedCourseId(courseId);
+    setShowEnrollmentPopup(true);
+  };
 
+  // New function to handle the actual enrollment submission from the popup
+  const handleEnrollmentSubmission = async (phoneNumber: string) => {
+    setIsSubmitting(true);
     try {
       const response = await fetch('/api/enrollments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ courseId, userId: session.user.id }),
+        body: JSON.stringify({ 
+          courseId: selectedCourseId, 
+          userId: session?.user?.id, 
+          email: session?.user?.email,
+          name: session?.user?.name,
+          phoneNumber // Include the new phone number
+        }),
       });
 
       if (response.ok) {
-        showToast('Enrollment successful! 🎓', 'success');
+        showToast('Enrollment request sent! Awaiting admin approval. 🎓', 'success');
+        setShowEnrollmentPopup(false);
+        setSelectedCourseId(null);
       } else {
-        showToast('Failed to enroll. Please try again.', 'error');
+        showToast('Failed to send enrollment request. Please try again.', 'error');
       }
     } catch (error) {
-      console.error('Error enrolling in course:', error);
+      console.error('Error sending enrollment request:', error);
       showToast('An error occurred. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -129,6 +143,16 @@ export default function CakeSchoolWebsite() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      <EnrollmentPopup // New component
+        isOpen={showEnrollmentPopup}
+        onClose={() => setShowEnrollmentPopup(false)}
+        onEnroll={handleEnrollmentSubmission}
+        courseId={selectedCourseId}
+        userEmail={session?.user?.email || ''}
+        userName={session?.user?.name || ''}
+        isSubmitting={isSubmitting}
+      />
 
       <Footer setActiveTab={setActiveTab} />
     </div>

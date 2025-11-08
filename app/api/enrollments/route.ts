@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, courseId, paymentInfo } = body; // Updated fields
+    const { userId, courseId, email, name, phoneNumber, paymentInfo } = body;
 
     if (!userId || !courseId) {
       return NextResponse.json(
@@ -19,8 +19,11 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         courseId,
-        status: EnrollmentStatus.PENDING, // Set default status to PENDING
-        paymentInfo, // Include paymentInfo if provided
+        email: email || null,
+        name: name || null,
+        phoneNumber: phoneNumber || null,
+        status: EnrollmentStatus.PENDING,
+        paymentInfo,
       },
     });
 
@@ -40,10 +43,10 @@ export async function GET() {
   try {
     const enrollments = await prisma.enrollment.findMany({
       include: {
-        user: { select: { name: true, email: true } }, // Include user details
-        course: { select: { title: true, level: true, price: true } }, // Include course details
+        user: { select: { name: true, email: true } },
+        course: { select: { title: true, level: true, price: true } },
       } as const,
-      orderBy: { createdAt: 'desc' }, // Order by createdAt
+      orderBy: { createdAt: 'desc' },
     });
 
     return NextResponse.json(enrollments);
