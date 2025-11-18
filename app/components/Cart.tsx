@@ -20,7 +20,7 @@ interface CartProps {
 }
 
 export default function Cart({ isOpen, onClose }: CartProps) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);  
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 

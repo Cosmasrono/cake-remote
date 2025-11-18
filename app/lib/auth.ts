@@ -1,24 +1,14 @@
+// app/lib/auth.ts
 import bcrypt from 'bcryptjs';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../api/auth/[...nextauth]/route';
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-secret-key-change-this-in-production'
-);
-
-export async function hashPassword(password: string) {
-  return await bcrypt.hash(password, 12);
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
 }
 
-export async function verifyPassword(password: string, hashedPassword: string) {
+export async function verifyPassword(
+  password: string,
+  hashedPassword: string
+): Promise<boolean> {
   return await bcrypt.compare(password, hashedPassword);
-}
-
-export async function getSession() {
-  return await getServerSession(authOptions);
-}
-
-export async function isAdmin() {
-  const session = await getSession();
-  return session?.user?.role === 'admin';
 }

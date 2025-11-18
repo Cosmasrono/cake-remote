@@ -1,3 +1,4 @@
+// app/api/cart/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
@@ -6,56 +7,40 @@ const prisma = new PrismaClient();
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('Received body:', body);
-    
     const { cakeName, cakeType, price, image } = body;
 
     if (!cakeName || !cakeType || !price || !image) {
-      console.log('Missing fields:', { cakeName, cakeType, price, image });
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    console.log('Checking for existing item...');
     const existingItem = await prisma.cart.findFirst({
-      where: {
-        cakeName,
-        cakeType,
-      },
+      where: { cakeName, cakeType },
     });
 
     let cartItem;
     if (existingItem) {
-      console.log('Updating existing item:', existingItem.id);
       cartItem = await prisma.cart.update({
         where: { id: existingItem.id },
-        data: { 
-          quantity: existingItem.quantity + 1 
-        },
+        data: { quantity: existingItem.quantity + 1 },
       });
     } else {
-      console.log('Creating new cart item...');
       cartItem = await prisma.cart.create({
-        data: {
-          cakeName,
-          cakeType,
-          price,
-          image,
-          quantity: 1,
-        },
+        data: { cakeName, cakeType, price, image, quantity: 1 },
       });
     }
 
-    console.log('Success! Cart item:', cartItem);
     return NextResponse.json(cartItem, { status: 201 });
   } catch (error) {
-    console.error('Full error details:', error);
+    console.error('Error adding to cart:', error);
     return NextResponse.json(
-      { error: 'Failed to add to cart', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to add to cart' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();  // Add this
   }
 }
 
@@ -64,7 +49,6 @@ export async function GET() {
     const cartItems = await prisma.cart.findMany({
       orderBy: { createdAt: 'desc' },
     });
-
     return NextResponse.json(cartItems);
   } catch (error) {
     console.error('Error fetching cart:', error);
@@ -72,6 +56,8 @@ export async function GET() {
       { error: 'Failed to fetch cart' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();  // Add this
   }
 }
 
@@ -98,5 +84,7 @@ export async function DELETE(request: NextRequest) {
       { error: 'Failed to remove from cart' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();  // Add this
   }
 }

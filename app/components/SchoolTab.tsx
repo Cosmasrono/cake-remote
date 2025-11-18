@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Book, Users, ChefHat, Award } from 'lucide-react';
+import { Clock, Book, Users, ChefHat, Award, MessageCircle } from 'lucide-react'; // Add MessageCircle
 
 interface SchoolTabProps {
-  handleEnrollCourse: (courseId: string) => void; // Changed signature
+  handleEnrollCourse: (courseId: string) => void;
   isSubmitting: boolean;
   userId: string | undefined;
 }
@@ -34,7 +34,6 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
     const fetchCoursesAndEnrollments = async () => {
       setLoading(true);
       try {
-        // Fetch courses
         const coursesResponse = await fetch('/api/courses');
         if (coursesResponse.ok) {
           const coursesData: Course[] = await coursesResponse.json();
@@ -49,12 +48,11 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
           console.error('Failed to fetch courses.');
         }
 
-        // Fetch user enrollments if userId is available
         if (userId) {
-          const enrollmentsResponse = await fetch('/api/enrollments');
+          const enrollmentsResponse = await fetch(`/api/enrollments/user/${userId}`);
           if (enrollmentsResponse.ok) {
             const enrollmentsData: Enrollment[] = await enrollmentsResponse.json();
-            setUserEnrollments(enrollmentsData.filter(enrollment => enrollment.userId === userId));
+            setUserEnrollments(enrollmentsData);
           } else {
             console.error('Failed to fetch user enrollments.');
           }
@@ -68,10 +66,57 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
     fetchCoursesAndEnrollments();
   }, [userId]);
 
-  const isEnrolledAndPending = (courseId: string) => {
-    return userEnrollments.some(enrollment => 
-      enrollment.courseId === courseId && enrollment.status === 'PENDING'
-    );
+  const getEnrollmentStatus = (courseId: string) => {
+    const enrollment = userEnrollments.find(e => e.courseId === courseId);
+    return enrollment?.status || null;
+  };
+
+  const getButtonConfig = (courseId: string) => {
+    if (!userId) {
+      return {
+        text: 'Log in to Enroll',
+        disabled: true,
+        className: 'bg-gray-400 cursor-not-allowed'
+      };
+    }
+
+    if (isSubmitting) {
+      return {
+        text: 'Enrolling...',
+        disabled: true,
+        className: 'bg-gray-400 cursor-not-allowed'
+      };
+    }
+
+    const status = getEnrollmentStatus(courseId);
+
+    switch (status) {
+      case 'APPROVED':
+      case 'COMPLETED':
+        return {
+          text: '✓ Enrolled',
+          disabled: true,
+          className: 'bg-green-600 cursor-not-allowed'
+        };
+      case 'PENDING':
+        return {
+          text: '⏳ Enrollment Pending',
+          disabled: true,
+          className: 'bg-yellow-500 cursor-not-allowed'
+        };
+      case 'REJECTED':
+        return {
+          text: 'Enroll Again',
+          disabled: false,
+          className: 'bg-purple-600 hover:bg-purple-700'
+        };
+      default:
+        return {
+          text: 'Enroll in Course',
+          disabled: false,
+          className: 'bg-purple-600 hover:bg-purple-700'
+        };
+    }
   };
 
   if (loading) {
@@ -97,9 +142,28 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
             </div>
           ) : (
             courses.map((course) => {
-              const enrolledAndPending = isEnrolledAndPending(course.id);
+              const buttonConfig = getButtonConfig(course.id);
+              const enrollmentStatus = getEnrollmentStatus(course.id);
+              const isApproved = enrollmentStatus === 'APPROVED' || enrollmentStatus === 'COMPLETED';
+              
               return (
-                <div key={course.id} className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition">
+                <div key={course.id} className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition relative">
+                  {/* Status Badge */}
+                  {enrollmentStatus && (
+                    <div className="absolute top-4 right-4">
+                      {isApproved && (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                          ✓ Enrolled
+                        </span>
+                      )}
+                      {enrollmentStatus === 'PENDING' && (
+                        <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
+                          ⏳ Pending
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {course.image && (
                     <img 
                       src={course.image} 
@@ -140,20 +204,39 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
 
                   <button
                     onClick={() => handleEnrollCourse(course.id)}
-                    disabled={isSubmitting || !userId || enrolledAndPending}
-                    className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={buttonConfig.disabled}
+                    className={`w-full text-white py-3 rounded-lg font-semibold transition ${buttonConfig.className}`}
                   >
-                    {isSubmitting
-                      ? 'Enrolling...'
-                      : enrolledAndPending
-                      ? 'Enrollment Pending'
-                      : userId
-                      ? 'Enroll in Course'
-                      : 'Log in to Enroll'}
+                    {buttonConfig.text}
                   </button>
-                  {enrolledAndPending && (
+
+                  {/* WhatsApp Button - Only show when APPROVED */}
+                  {isApproved && (
+                    <a
+                      href={`https://wa.me/254757450716?text=${encodeURIComponent(`Hi! I'm enrolled in ${course.title}. Please add me to the class group.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Chat on WhatsApp
+                    </a>
+                  )}
+
+                  {/* Status Messages */}
+                  {enrollmentStatus === 'PENDING' && (
                     <p className="text-sm text-yellow-600 mt-2 text-center">
-                      Your enrollment is pending admin approval.
+                      Your enrollment is pending admin approval
+                    </p>
+                  )}
+                  {isApproved && (
+                    <p className="text-sm text-green-600 mt-2 text-center">
+                      ✓ Enrollment approved! Contact us on WhatsApp above
+                    </p>
+                  )}
+                  {enrollmentStatus === 'REJECTED' && (
+                    <p className="text-sm text-red-600 mt-2 text-center">
+                      Previous enrollment was rejected. You can try again.
                     </p>
                   )}
                 </div>

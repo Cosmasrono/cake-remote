@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { formatToKsh } from '@/app/lib/currency';
 
 interface CartItem {
   id: string;
@@ -84,12 +85,12 @@ export default function PaymentPage() {
             {cartItems.map((item) => (
               <div key={item.id} className="flex justify-between items-center">
                 <p className="text-gray-700">{item.cakeName} ({item.cakeType}) x {item.quantity}</p>
-                <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                <p className="font-semibold">{formatToKsh(item.price * item.quantity)}</p>
               </div>
             ))}
             <div className="flex justify-between items-center font-bold text-lg border-t pt-2 mt-2">
               <span>Total:</span>
-              <span className="text-pink-600">${totalAmount.toFixed(2)}</span>
+              <span className="text-pink-600">{formatToKsh(totalAmount)}</span>
             </div>
           </div>
         )}

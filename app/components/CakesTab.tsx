@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import Image from 'next/image';
 import useSWR from 'swr';
-import { Cake, Star, ChefHat } from 'lucide-react';
+import { Star, ChefHat } from 'lucide-react';
+import { formatToKsh } from '@/app/lib/currency';
 
 interface Cake {
   id: string;
@@ -21,7 +23,7 @@ interface CakesTabProps {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function CakesTab({ handleAddToCart, isSubmitting }: CakesTabProps) {
-  const { data: cakes, error, isLoading } = useSWR<Cake[]>('/api/cakes', fetcher); // We'll create this API
+  const { data: cakes, error, isLoading } = useSWR<Cake[]>('/api/cakes', fetcher);
 
   if (error) return <div className="text-center py-12 text-red-600">Failed to load cakes</div>;
   if (isLoading) return <div className="text-center py-12">Loading cakes...</div>;
@@ -37,17 +39,20 @@ export default function CakesTab({ handleAddToCart, isSubmitting }: CakesTabProp
         <div className="grid md:grid-cols-3 gap-8">
           {cakes?.map((cake) => (
             <div key={cake.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition">
-              <div className="h-48 overflow-hidden">
-                <img 
-                  src={cake.image} 
+              <div className="h-48 overflow-hidden relative">
+                <Image
+                  src={cake.image}
                   alt={cake.name}
-                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover hover:scale-110 transition-transform duration-300"
+                  priority
                 />
               </div>
               <div className="p-6">
                 <h3 className="text-2xl font-bold mb-2">{cake.name}</h3>
                 <p className="text-gray-600 mb-2">{cake.type}</p>
-                <p className="text-2xl font-bold text-pink-600 mb-3">${cake.price}</p>
+                <p className="text-2xl font-bold text-pink-600 mb-3">{formatToKsh(cake.price)}</p>
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(cake.rating)].map((_, i) => (
                     <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getSession, isAdmin } from '@/app/lib/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import {
@@ -20,15 +21,15 @@ import {
   FaArrowDown,
   FaEllipsisV,
 } from 'react-icons/fa';
-import AdminCard from '@/app/components/AdminCard'; // New import
-import StatCard from '@/app/components/StatCard';   // New import
+import AdminCard from '@/app/components/AdminCard';
+import StatCard from '@/app/components/StatCard';
 
 const prisma = new PrismaClient();
 
 export default async function AdminDashboardPage() {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
 
-  if (!session || !(await isAdmin())) {
+  if (!session || session.user?.role !== 'ADMIN') {
     redirect('/login');
   }
 
@@ -39,7 +40,7 @@ export default async function AdminDashboardPage() {
     allCakes,
     allCourses,
     allUsers,
-    pendingEnrollments,
+    allEnrollments, // Changed from pendingEnrollments
   ] = await Promise.all([
     prisma.user.count(),
     prisma.order.count(),
@@ -50,15 +51,17 @@ export default async function AdminDashboardPage() {
       select: { id: true, name: true, email: true, role: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     }),
+    // Fetch ALL enrollments, not just pending
     prisma.enrollment.findMany({
-      where: { status: 'PENDING' },
       include: {
         user: { select: { name: true, email: true } },
         course: { select: { title: true } },
       },
-      orderBy: { enrolledAt: 'asc' },
+      orderBy: { enrolledAt: 'desc' },
     }),
   ]);
+
+  const pendingCount = allEnrollments.filter(e => e.status === 'PENDING').length;
 
   const adminSections = [
     {
@@ -74,7 +77,7 @@ export default async function AdminDashboardPage() {
       icon: <FaGraduationCap />,
       route: '/admin/courses',
       gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
-      count: allCourses.length, // Display total courses count
+      count: allCourses.length,
     },
     {
       title: 'User Management',
@@ -82,7 +85,7 @@ export default async function AdminDashboardPage() {
       icon: <FaUsers />,
       route: '/admin/users',
       gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
-      count: usersCount, // Display total users count
+      count: usersCount,
     },
     {
       title: 'Order Management',
@@ -90,7 +93,7 @@ export default async function AdminDashboardPage() {
       icon: <FaShoppingCart />,
       route: '/admin/orders',
       gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
-      count: ordersCount, // Display total orders count
+      count: ordersCount,
     },
     {
       title: 'Analytics Hub',
@@ -140,32 +143,46 @@ export default async function AdminDashboardPage() {
     {
       title: 'Total Users',
       value: usersCount,
-      change: 0, // Placeholder
+      change: 0,
       icon: <FaUsers />,
       gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
     },
     {
       title: 'Total Orders',
       value: ordersCount,
-      change: 0, // Placeholder
+      change: 0,
       icon: <FaShoppingCart />,
       gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
     },
     {
       title: 'Total Cakes',
       value: allCakes.length,
-      change: 0, // Placeholder
+      change: 0,
       icon: <FaBirthdayCake />,
       gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
     },
     {
       title: 'Pending Enrollments',
-      value: pendingEnrollments.length,
-      change: 0, // Placeholder
+      value: pendingCount,
+      change: 0,
       icon: <FaGraduationCap />,
       gradient: 'bg-gradient-to-br from-orange-500 to-amber-600',
     },
   ];
+
+  // Helper function to get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50">
@@ -184,7 +201,7 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Search Bar (removed client-side state) */}
+            {/* Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
               <div className="relative w-full">
                 <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -257,10 +274,11 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Pending Enrollments Table */}
+        {/* All Enrollments Table */}
         <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
           <div className="p-6 border-b">
-            <h2 className="text-2xl font-bold text-gray-800">Pending Enrollments</h2>
+            <h2 className="text-2xl font-bold text-gray-800">All Enrollments</h2>
+            <p className="text-sm text-gray-500 mt-1">Manage and track all course enrollments</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -270,44 +288,56 @@ export default async function AdminDashboardPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone Number</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled At</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {pendingEnrollments.length === 0 ? (
+                {allEnrollments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No pending enrollments.</td>
+                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">No enrollments found.</td>
                   </tr>
                 ) : (
-                  pendingEnrollments.map((enrollment) => (
+                  allEnrollments.map((enrollment) => (
                     <tr key={enrollment.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{enrollment.course.title}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium">{enrollment.course.title}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{enrollment.user.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{enrollment.user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{enrollment.phoneNumber}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(enrollment.status)}`}>
+                          {enrollment.status}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(enrollment.enrolledAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <form action="/api/admin/enrollments/approve" method="POST" className="inline-block mr-2">
-                          <input type="hidden" name="enrollmentId" value={enrollment.id} />
-                          <button
-                            type="submit"
-                            className="text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-md"
-                          >
-                            Approve
-                          </button>
-                        </form>
-                        <form action="/api/admin/enrollments/reject" method="POST" className="inline-block">
-                          <input type="hidden" name="enrollmentId" value={enrollment.id} />
-                          <button
-                            type="submit"
-                            className="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-md"
-                          >
-                            Reject
-                          </button>
-                        </form>
+                        {enrollment.status === 'PENDING' ? (
+                          <>
+                            <form action="/api/admin/enrollments/approve" method="POST" className="inline-block mr-2">
+                              <input type="hidden" name="enrollmentId" value={enrollment.id} />
+                              <button
+                                type="submit"
+                                className="text-green-600 hover:text-green-900 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-md transition-colors"
+                              >
+                                Approve
+                              </button>
+                            </form>
+                            <form action="/api/admin/enrollments/reject" method="POST" className="inline-block">
+                              <input type="hidden" name="enrollmentId" value={enrollment.id} />
+                              <button
+                                type="submit"
+                                className="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-3 py-1 rounded-md transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </form>
+                          </>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No actions available</span>
+                        )}
                       </td>
                     </tr>
                   ))

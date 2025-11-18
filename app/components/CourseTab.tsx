@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, Edit } from 'lucide-react';
+import { formatToKsh } from '@/app/lib/currency';
 
 interface CourseTabProps {
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -169,7 +170,7 @@ export default function CourseTab({ showToast }: CourseTabProps) {
 
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-              Price ($) *
+              Price (Ksh) *
             </label>
             <input
               type="number"
@@ -237,7 +238,7 @@ export default function CourseTab({ showToast }: CourseTabProps) {
                   }`}>
                     {course.level}
                   </span>
-                  <p className="text-lg font-semibold text-purple-600">${course.price.toFixed(2)}</p>
+                  <p className="text-lg font-semibold text-purple-600">{formatToKsh(course.price)}</p>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
                   Created: {new Date(course.createdAt).toLocaleDateString()}

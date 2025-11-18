@@ -54,15 +54,16 @@ model Order {
 }
 
 model Course {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  description String
-  level       String
-  price       Float
-  image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  enrollments Enrollment[]
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  description  String
+  level        String
+  price        Float
+  image        String?
+  whatsappLink String?      // Add this line
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  enrollments  Enrollment[]
 }
 
 enum EnrollmentStatus {
@@ -87,4 +88,27 @@ model Enrollment {
   paymentInfo String? // Placeholder for payment gateway transaction ID or similar
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+model Payment {
+  id                  String        @id @default(auto()) @map("_id") @db.ObjectId
+  merchantRequestId   String
+  checkoutRequestId   String        @unique
+  phoneNumber         String
+  amount              Float
+  status              PaymentStatus @default(PENDING)
+  resultCode          Int?
+  resultDesc          String?
+  mpesaReceiptNumber  String?
+  transactionDate     String?
+  cartItems           Json?         // Store cart items
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

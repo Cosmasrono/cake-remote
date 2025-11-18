@@ -39,17 +39,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// app/api/enrollments/route.ts
 export async function GET() {
   try {
     const enrollments = await prisma.enrollment.findMany({
       include: {
         user: { select: { name: true, email: true } },
         course: { select: { title: true, level: true, price: true } },
-      } as const,
+      },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(enrollments);
+    // Map to include userId in the response
+    const enrollmentsWithUserId = enrollments.map(enrollment => ({
+      ...enrollment,
+      userId: enrollment.userId, // Make sure this is included
+    }));
+
+    return NextResponse.json(enrollmentsWithUserId);
   } catch (error) {
     console.error('Error fetching enrollments:', error);
     return NextResponse.json(

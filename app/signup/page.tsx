@@ -12,7 +12,7 @@ export default function SignupPage() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,14 +34,15 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Step 1: Create the user account
+      // Create user account (role will default to USER)
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          // No role - will default to USER in the backend
         })
       });
 
@@ -53,7 +54,7 @@ export default function SignupPage() {
         return;
       }
 
-      // Step 2: Automatically log in the user
+      // Automatically log in the user
       const signInResult = await signIn('credentials', {
         redirect: false,
         email: formData.email,
@@ -66,7 +67,7 @@ export default function SignupPage() {
         return;
       }
 
-      // Step 3: Redirect to home page
+      // Redirect to home (all new users are regular users)
       router.push('/');
       router.refresh();
     } catch (err) {

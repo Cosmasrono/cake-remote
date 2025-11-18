@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, role } = await request.json();
+    const { name, email, password } = await request.json();
 
     // Validate input
     if (!name || !email || !password) {
@@ -39,13 +39,13 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create user (role defaults to USER via Prisma schema)
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: role || 'USER' // Default role to USER if not provided
+        // No role specified - Prisma will use default USER from schema
       }
     });
 
