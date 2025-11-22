@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { prisma } from '@/app/lib/prisma'; // Use the singleton
+import { prisma } from '@/app/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,10 +10,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse form data instead of JSON
     const formData = await req.formData();
     const message = formData.get('message') as string;
-    const active = formData.get('active') === 'on'; // Checkbox sends 'on' when checked
+    const dayOfWeek = parseInt(formData.get('dayOfWeek') as string);
+    const active = formData.get('active') === 'on';
+    
+    const startDateStr = formData.get('startDate') as string;
+    const endDateStr = formData.get('endDate') as string;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -22,11 +25,13 @@ export async function POST(req: NextRequest) {
     await prisma.promotion.create({
       data: {
         message,
+        dayOfWeek,
         active,
+        startDate: startDateStr ? new Date(startDateStr) : null,
+        endDate: endDateStr ? new Date(endDateStr) : null,
       },
     });
 
-    // Redirect back to the promotions page
     return NextResponse.redirect(new URL('/admin/promotions', req.url));
   } catch (error) {
     console.error('Error creating promotion:', error);

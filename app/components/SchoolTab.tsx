@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Book, Users, ChefHat, Award, MessageCircle } from 'lucide-react'; // Add MessageCircle
+import { Clock, Book, Users, ChefHat, Award } from 'lucide-react';
 
 interface SchoolTabProps {
   handleEnrollCourse: (courseId: string) => void;
   isSubmitting: boolean;
-  userId: string | undefined;
+  // Removed userId as it is not needed here
 }
 
 interface Course {
@@ -25,15 +25,18 @@ interface Enrollment {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED';
 }
 
-export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: SchoolTabProps) {
+export default function SchoolTab({ handleEnrollCourse, isSubmitting }: SchoolTabProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userEnrollments, setUserEnrollments] = useState<Enrollment[]>([]);
+  // Removed userEnrollments state
+  // Removed phoneNumbers state
+  const [enrollingCourse, setEnrollingCourse] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCoursesAndEnrollments = async () => {
+    const fetchCourses = async () => {
       setLoading(true);
       try {
+        // Fetch courses
         const coursesResponse = await fetch('/api/courses');
         if (coursesResponse.ok) {
           const coursesData: Course[] = await coursesResponse.json();
@@ -47,82 +50,28 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
         } else {
           console.error('Failed to fetch courses.');
         }
-
-        if (userId) {
-          const enrollmentsResponse = await fetch(`/api/enrollments/user/${userId}`);
-          if (enrollmentsResponse.ok) {
-            const enrollmentsData: Enrollment[] = await enrollmentsResponse.json();
-            setUserEnrollments(enrollmentsData);
-          } else {
-            console.error('Failed to fetch user enrollments.');
-          }
-        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchCoursesAndEnrollments();
-  }, [userId]);
+    fetchCourses();
+  }, []); // Removed userId from dependency array
 
-  const getEnrollmentStatus = (courseId: string) => {
-    const enrollment = userEnrollments.find(e => e.courseId === courseId);
-    return enrollment?.status || null;
-  };
+  // Removed getEnrollmentStatus function
 
-  const getButtonConfig = (courseId: string) => {
-    if (!userId) {
-      return {
-        text: 'Log in to Enroll',
-        disabled: true,
-        className: 'bg-gray-400 cursor-not-allowed'
-      };
-    }
-
-    if (isSubmitting) {
-      return {
-        text: 'Enrolling...',
-        disabled: true,
-        className: 'bg-gray-400 cursor-not-allowed'
-      };
-    }
-
-    const status = getEnrollmentStatus(courseId);
-
-    switch (status) {
-      case 'APPROVED':
-      case 'COMPLETED':
-        return {
-          text: '✓ Enrolled',
-          disabled: true,
-          className: 'bg-green-600 cursor-not-allowed'
-        };
-      case 'PENDING':
-        return {
-          text: '⏳ Enrollment Pending',
-          disabled: true,
-          className: 'bg-yellow-500 cursor-not-allowed'
-        };
-      case 'REJECTED':
-        return {
-          text: 'Enroll Again',
-          disabled: false,
-          className: 'bg-purple-600 hover:bg-purple-700'
-        };
-      default:
-        return {
-          text: 'Enroll in Course',
-          disabled: false,
-          className: 'bg-purple-600 hover:bg-purple-700'
-        };
-    }
+  const handleEnrollClick = async (courseId: string) => {
+    // No longer handling phone number here
+    setEnrollingCourse(courseId);
+    handleEnrollCourse(courseId); // Only pass courseId
+    setEnrollingCourse(null);
   };
 
   if (loading) {
     return (
       <div className="py-12 text-center">
-        <p className="text-gray-600">Loading courses and enrollments...</p>
+        <p className="text-gray-600">Loading courses...</p>
       </div>
     );
   }
@@ -142,28 +91,14 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
             </div>
           ) : (
             courses.map((course) => {
-              const buttonConfig = getButtonConfig(course.id);
-              const enrollmentStatus = getEnrollmentStatus(course.id);
-              const isApproved = enrollmentStatus === 'APPROVED' || enrollmentStatus === 'COMPLETED';
+              // Removed enrollment status logic, as it will be handled by the EnrollmentPopup and backend
+              // const enrollment = getEnrollmentStatus(course.id);
+              // const isEnrolled = !!enrollment;
+              // const isPending = enrollment?.status === 'PENDING';
+              // const isApproved = enrollment?.status === 'APPROVED';
               
               return (
-                <div key={course.id} className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition relative">
-                  {/* Status Badge */}
-                  {enrollmentStatus && (
-                    <div className="absolute top-4 right-4">
-                      {isApproved && (
-                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          ✓ Enrolled
-                        </span>
-                      )}
-                      {enrollmentStatus === 'PENDING' && (
-                        <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
-                          ⏳ Pending
-                        </span>
-                      )}
-                    </div>
-                  )}
-
+                <div key={course.id} className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition">
                   {course.image && (
                     <img 
                       src={course.image} 
@@ -185,7 +120,7 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
                       </span>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-pink-600">${course.price.toFixed(2)}</div>
+                      <div className="text-3xl font-bold text-pink-600">Ksh {course.price.toFixed(2)}</div>
                     </div>
                   </div>
 
@@ -202,43 +137,21 @@ export default function SchoolTab({ handleEnrollCourse, isSubmitting, userId }: 
                     </div>
                   </div>
 
+                  {/* Removed phone number input from here, it will be in the EnrollmentPopup */}
+
                   <button
-                    onClick={() => handleEnrollCourse(course.id)}
-                    disabled={buttonConfig.disabled}
-                    className={`w-full text-white py-3 rounded-lg font-semibold transition ${buttonConfig.className}`}
+                    onClick={() => handleEnrollClick(course.id)}
+                    disabled={isSubmitting || enrollingCourse === course.id}
+                    className={`w-full py-3 rounded-lg font-semibold transition ${
+                      'bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed'
+                    }`}
                   >
-                    {buttonConfig.text}
+                    {enrollingCourse === course.id
+                      ? 'Enrolling...'
+                      : 'Enroll in Course'}
                   </button>
-
-                  {/* WhatsApp Button - Only show when APPROVED */}
-                  {isApproved && (
-                    <a
-                      href={`https://wa.me/254757450716?text=${encodeURIComponent(`Hi! I'm enrolled in ${course.title}. Please add me to the class group.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition flex items-center justify-center gap-2"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      Chat on WhatsApp
-                    </a>
-                  )}
-
-                  {/* Status Messages */}
-                  {enrollmentStatus === 'PENDING' && (
-                    <p className="text-sm text-yellow-600 mt-2 text-center">
-                      Your enrollment is pending admin approval
-                    </p>
-                  )}
-                  {isApproved && (
-                    <p className="text-sm text-green-600 mt-2 text-center">
-                      ✓ Enrollment approved! Contact us on WhatsApp above
-                    </p>
-                  )}
-                  {enrollmentStatus === 'REJECTED' && (
-                    <p className="text-sm text-red-600 mt-2 text-center">
-                      Previous enrollment was rejected. You can try again.
-                    </p>
-                  )}
+                  
+                  {/* Removed pending/approved enrollment messages from here */}
                 </div>
               );
             })

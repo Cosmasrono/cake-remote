@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Cake, GraduationCap, Award, ChefHat, Sparkles, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -9,6 +9,17 @@ interface HomeTabProps {
 }
 
 export default function HomeTab({ setActiveTab }: HomeTabProps) {
+  // Generate particles once and memoize them to avoid hydration mismatch
+  const particles = useMemo(() => {
+    return [...Array(20)].map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      duration: 3 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }));
+  }, []);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -73,23 +84,23 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
           style={{ backgroundSize: '200% 200%' }}
         />
 
-        {/* Floating Particles */}
-        {[...Array(20)].map((_, i) => (
+        {/* Floating Particles - FIXED */}
+        {particles.map((particle) => (
           <motion.div
-            key={i}
+            key={particle.id}
             className="absolute w-2 h-2 bg-white rounded-full opacity-30"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
             }}
             animate={{
               y: [0, -100, 0],
               opacity: [0.3, 0.6, 0.3],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: particle.duration,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: particle.delay,
             }}
           />
         ))}
@@ -167,6 +178,7 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
         </div>
       </section>
 
+      {/* Rest of your sections remain the same... */}
       {/* About Us Section with Scroll Animation */}
       <motion.section
         className="py-24 bg-gradient-to-b from-white to-pink-50"
@@ -245,13 +257,13 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
                   repeat: Infinity,
                 }}
               />
-              <motion.img
-                src="https://images.unsplash.com/photo-1588195538326-c5aee37a8d00?w=800&q=80"
-                alt="Beautiful decorated cake"
-                className="relative rounded-3xl shadow-2xl w-full h-96 object-cover"
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              />
+             <motion.img
+  src="https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=800&q=80"
+  alt="Beautiful decorated cake"
+  className="relative rounded-3xl shadow-2xl w-full h-96 object-cover"
+  whileHover={{ scale: 1.02 }}
+  transition={{ type: "spring", stiffness: 300 }}
+/>
             </motion.div>
           </div>
         </div>

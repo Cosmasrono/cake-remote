@@ -16,6 +16,7 @@ export default function SignupPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(''); // New state for success message
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,22 +55,14 @@ export default function SignupPage() {
         return;
       }
 
-      // Automatically log in the user
-      const signInResult = await signIn('credentials', {
-        redirect: false,
-        email: formData.email,
-        password: formData.password,
-      });
+      setSuccessMessage('Account created successfully! Redirecting to login...');
+      setIsLoading(false);
 
-      if (signInResult?.error) {
-        setError('Account created but login failed. Please login manually.');
-        setIsLoading(false);
-        return;
-      }
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000); // Redirect after 2 seconds
 
-      // Redirect to home (all new users are regular users)
-      router.push('/');
-      router.refresh();
     } catch (err) {
       console.error('Signup error:', err);
       setError('Something went wrong');
@@ -91,6 +84,12 @@ export default function SignupPage() {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4">
+            {successMessage}
           </div>
         )}
 
