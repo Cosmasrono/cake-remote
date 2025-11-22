@@ -112,3 +112,32 @@ enum PaymentStatus {
   FAILED
   CANCELLED
 }
+
+
+model CustomOrder {
+  id              String   @id @default(cuid()) @map("_id") // This is the fix
+  name            String
+  phone           String
+  occasion        String?
+  date            String?
+  flavor          String?
+  size            String?
+  message         String?
+  inspirationLink String?
+  image           String?
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+
+  @@map("custom_orders") // optional: rename collection name
+}
+
+
+model Promotion {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  message   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("promotions")
+}

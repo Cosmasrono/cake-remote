@@ -71,6 +71,13 @@ export default async function AdminDashboardPage() {
       route: '/admin/cakes',
       gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
     },
+    // custom cakes
+    {      title: 'Custom Orders',
+      description: 'Handle bespoke cake requests from customers',
+      icon: <FaBirthdayCake />,
+      route: '/admin/custom-orders',
+      gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
+    },
     {
       title: 'Courses',
       description: 'Manage training programs and schedules',

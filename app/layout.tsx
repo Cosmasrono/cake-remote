@@ -1,7 +1,9 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import PromotionBanner from "@/app/components/PromotionBanner"; // ← Add this
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,11 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Providers>{children}</Providers>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          {/* Promotion Banner - appears site-wide when active */}
+          <PromotionBanner />
+
+          {/* Main content */}
+          {children}
+        </Providers>
       </body>
     </html>
   );
-} 
+}

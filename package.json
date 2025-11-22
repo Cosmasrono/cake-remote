@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
     "@prisma/client": "6.18.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.2",
