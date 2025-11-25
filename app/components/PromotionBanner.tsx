@@ -3,20 +3,40 @@ import { prisma } from '@/app/lib/prisma';
 import { Megaphone, Sparkles } from 'lucide-react';
 
 async function getTodaysPromotion() {
-  const today = new Date();
-  const currentDay = today.getDay();
-  
+  const now = new Date();
+  const currentDay = now.getDay();
+
+  // Set to start of day for date comparisons (ignore time)
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23, 59, 59, 999);
+
   return await prisma.promotion.findFirst({
     where: {
       active: true,
-      daysOfWeek: { // Changed from dayOfWeek to daysOfWeek
-        has: currentDay, // Use 'has' to check if array contains currentDay
+      daysOfWeek: {
+        has: currentDay,
       },
       OR: [
+        // No date restrictions
         { startDate: null, endDate: null },
-        { startDate: { lte: today }, endDate: null },
-        { startDate: null, endDate: { gte: today } },
-        { startDate: { lte: today }, endDate: { gte: today } },
+        // Only start date set
+        {
+          startDate: { lte: todayEnd },
+          endDate: null
+        },
+        // Only end date set
+        {
+          startDate: null,
+          endDate: { gte: todayStart }
+        },
+        // Both dates set
+        {
+          startDate: { lte: todayEnd },
+          endDate: { gte: todayStart }
+        },
       ],
     },
     orderBy: { createdAt: 'desc' },
@@ -32,7 +52,7 @@ export default async function PromotionBanner() {
     <div className="relative bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 overflow-hidden">
       {/* Animated background pattern */}
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-0 w-full h-full" 
+        <div className="absolute top-0 left-0 w-full h-full"
           style={{
             backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.1) 10px, rgba(255,255,255,.1) 20px)'
           }}

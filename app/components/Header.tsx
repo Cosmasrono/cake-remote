@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Cake, ShoppingCart, User, LogOut, Shield, Pizza, Beef, Flame, Truck } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -12,10 +12,46 @@ interface HeaderProps {
   onCartClick: () => void;
 }
 
+interface CartItem {
+  id: string;
+  quantity: number;
+}
+
 export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderProps) {
   const { data: session, status } = useSession() as { data: Session | null; status: 'loading' | 'authenticated' | 'unauthenticated' };
   const router = useRouter();
-  
+  const [cartCount, setCartCount] = useState(0);
+
+  // Fetch cart count
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      try {
+        const res = await fetch('/api/cart');
+        if (res.ok) {
+          const items: CartItem[] = await res.json();
+          const count = items.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(count);
+        }
+      } catch (error) {
+        console.error('Failed to fetch cart count:', error);
+      }
+    };
+
+    fetchCartCount();
+
+    // Refresh cart count every 5 seconds when on the page
+    const interval = setInterval(fetchCartCount, 5000);
+
+    // Listen for cart update events
+    const handleCartUpdate = () => fetchCartCount();
+    window.addEventListener('cartUpdated', handleCartUpdate);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []);
+
   const handleLogin = () => signIn();
   const handleLogout = () => signOut();
   const handleAdminClick = () => router.push('/admin/dashboard');
@@ -61,11 +97,10 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
-                    isActive
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg scale-105'
-                      : 'text-gray-700 hover:bg-pink-100 hover:text-pink-700'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${isActive
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg scale-105'
+                    : 'text-gray-700 hover:bg-pink-100 hover:text-pink-700'
+                    }`}
                 >
                   {Icon && <Icon className="w-4 h-4" />}
                   {item.label}
@@ -83,9 +118,11 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
               title="View Cart"
             >
               <ShoppingCart className="w-5 h-5 text-pink-600 group-hover:text-purple-600 transition" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                3
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  {cartCount}
+                </span>
+              )}
             </button>
 
             {/* Auth Section */}
@@ -145,11 +182,10 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderP
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                  activeTab === item.id
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'bg-white text-gray-700 shadow-md'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${activeTab === item.id
+                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                  : 'bg-white text-gray-700 shadow-md'
+                  }`}
               >
                 {Icon && <Icon className="w-3.5 h-3.5" />}
                 {item.label}

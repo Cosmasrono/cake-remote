@@ -1,0 +1,104 @@
+=== PROMOTION DEBUG ===
+Current Date: 11/25/2025
+Current Day of Week: 2 (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)
+
+--- All Promotions in Database ---
+Total promotions: 6
+
+Promotion 1:
+  ID: 69217311d7cdf40b437a10c4
+  Message: “Celebrate Your Big Day With 20% Off Custom Cakes!”
+  Active: true
+  Days of Week: []
+  Start Date: null
+  End Date: null
+  Created: Sat Nov 22 2025 11:23:45 GMT+0300 (East Africa Time)
+
+Promotion 2:
+  ID: 6921741df883f55d7f1b9c44
+  Message: “Celebrate Your Big Day With 20% Off Custom Cakes!”
+  Active: true
+  Days of Week: []
+  Start Date: null
+  End Date: null
+  Created: Sat Nov 22 2025 11:28:11 GMT+0300 (East Africa Time)
+
+Promotion 3:
+  ID: 692179652086b6be129e900e
+  Message: “Celebrate Your Big Day With 20% Off Custom Cakes!”
+  Active: true
+  Days of Week: []
+  Start Date: null
+  End Date: null
+  Created: Sat Nov 22 2025 11:50:45 GMT+0300 (East Africa Time)
+
+Promotion 4:
+  ID: 6921797c2086b6be129e900f
+  Message: “Celebrate Your Big Day With 40% Off Custom Cakes!”
+  Active: true
+  Days of Week: []
+  Start Date: null
+  End Date: null
+  Created: Sat Nov 22 2025 11:51:08 GMT+0300 (East Africa Time)
+
+Promotion 5:
+  ID: 69217c632086b6be129e9014
+  Message: “Celebrate Your Big Day With 20% Off Custom Cakes!”
+  Active: true
+  Days of Week: []
+  Start Date: null
+  End Date: null
+  Created: Sat Nov 22 2025 12:03:31 GMT+0300 (East Africa Time)
+
+Promotion 6:
+  ID: 692602b8744bc767762664d6
+  Message: 🍓 2. “Two-Slice Tuesday – Buy 1 Slice, Get 1 FREE!”
+  Active: true
+  Days of Week: [2]
+  Start Date: Tue Nov 25 2025 03:00:00 GMT+0300 (East Africa Time)
+  End Date: Tue Nov 25 2025 03:00:00 GMT+0300 (East Africa Time)
+  Created: Tue Nov 25 2025 22:25:44 GMT+0300 (East Africa Time)
+
+
+--- Checking for Today's Promotion ---
+❌ No matching promotion found for today
+   This is why the banner is not showing!
+
+   Checking why:
+   - Current day: 2
+
+   Promotion: "“Celebrate Your Big Day With 20% Off Custom Cakes!”"
+     - Active: true ✅
+     - Days: [] ❌ Does not include day 2
+     - Date range: ✅ Matches
+       Start: none, End: none
+
+   Promotion: "“Celebrate Your Big Day With 20% Off Custom Cakes!”"
+     - Active: true ✅
+     - Days: [] ❌ Does not include day 2
+     - Date range: ✅ Matches
+       Start: none, End: none
+
+   Promotion: "“Celebrate Your Big Day With 20% Off Custom Cakes!”"
+     - Active: true ✅
+     - Days: [] ❌ Does not include day 2
+     - Date range: ✅ Matches
+       Start: none, End: none
+
+   Promotion: "“Celebrate Your Big Day With 40% Off Custom Cakes!”"
+     - Active: true ✅
+     - Days: [] ❌ Does not include day 2
+     - Date range: ✅ Matches
+       Start: none, End: none
+
+   Promotion: "“Celebrate Your Big Day With 20% Off Custom Cakes!”"
+     - Active: true ✅
+     - Days: [] ❌ Does not include day 2
+     - Date range: ✅ Matches
+       Start: none, End: none
+
+   Promotion: "🍓 2. “Two-Slice Tuesday – Buy 1 Slice, Get 1 FREE!”"
+     - Active: true ✅
+     - Days: [2] ✅
+     - Date range: ❌ Does not match
+       Start: Tue Nov 25 2025 03:00:00 GMT+0300 (East Africa Time), End: Tue Nov 25 2025 03:00:00 GMT+0300 (East Africa Time)
