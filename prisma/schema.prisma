@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   Enrollment Enrollment[]
+  payments   Payment[] // Add inverse relation to Payment model
 }
 
 enum UserRole {
@@ -92,6 +93,8 @@ model Enrollment {
 
 model Payment {
   id                  String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String        @db.ObjectId // Add userId field
+  user                User          @relation(fields: [userId], references: [id]) // Establish relation to User model
   merchantRequestId   String
   checkoutRequestId   String        @unique
   phoneNumber         String

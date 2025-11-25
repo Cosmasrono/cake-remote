@@ -31,17 +31,18 @@ export default function HomeTab({ setActiveTab }: HomeTabProps) {
     },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    },
-  };
+ const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 100
+    }
+  },
+};
+
 
   const floatingAnimation = {
     y: [0, -10, 0],

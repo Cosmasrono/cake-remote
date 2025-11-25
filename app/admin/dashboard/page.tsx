@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getServerSession } from 'next-auth/next'; // ✅ FIXED
+import type { Session } from 'next-auth';
+import { authOptions } from '@/app/lib/auth-options';
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
+
 import {
   FaBirthdayCake,
   FaGraduationCap,
@@ -17,9 +19,6 @@ import {
   FaBell,
   FaSearch,
   FaUserCircle,
-  FaArrowUp,
-  FaArrowDown,
-  FaEllipsisV,
 } from 'react-icons/fa';
 import AdminCard from '@/app/components/AdminCard';
 import StatCard from '@/app/components/StatCard';
@@ -27,11 +26,13 @@ import StatCard from '@/app/components/StatCard';
 const prisma = new PrismaClient();
 
 export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions as any) as Session | null;
 
-  if (!session || session.user?.role !== 'ADMIN') {
+  if (!session || (session.user as any)?.role !== 'ADMIN') {
     redirect('/login');
   }
+
+   
 
   const [
     usersCount,
@@ -40,7 +41,7 @@ export default async function AdminDashboardPage() {
     allCakes,
     allCourses,
     allUsers,
-    allEnrollments, // Changed from pendingEnrollments
+    allEnrollments,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.order.count(),
@@ -51,7 +52,6 @@ export default async function AdminDashboardPage() {
       select: { id: true, name: true, email: true, role: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     }),
-    // Fetch ALL enrollments, not just pending
     prisma.enrollment.findMany({
       include: {
         user: { select: { name: true, email: true } },
@@ -71,8 +71,8 @@ export default async function AdminDashboardPage() {
       route: '/admin/cakes',
       gradient: 'bg-gradient-to-br from-pink-500 to-rose-600',
     },
-    // custom cakes
-    {      title: 'Custom Orders',
+    {
+      title: 'Custom Orders',
       description: 'Handle bespoke cake requests from customers',
       icon: <FaBirthdayCake />,
       route: '/admin/custom-orders',
@@ -177,7 +177,6 @@ export default async function AdminDashboardPage() {
     },
   ];
 
-  // Helper function to get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -193,11 +192,9 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50">
-      {/* Top Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo/Brand */}
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <FaBirthdayCake className="text-white text-xl" />
@@ -208,7 +205,6 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
               <div className="relative w-full">
                 <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -220,7 +216,6 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Right Section */}
             <div className="flex items-center space-x-4">
               <button className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors">
                 <FaBell className="text-xl" />
@@ -238,15 +233,12 @@ export default async function AdminDashboardPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Welcome back, Admin</h2>
           <p className="text-gray-600">Here's what's happening with your business today.</p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
             <StatCard
@@ -260,13 +252,11 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Section Header */}
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-gray-800 mb-2">Quick Actions</h3>
           <p className="text-gray-600">Manage different aspects of your platform</p>
         </div>
 
-        {/* Admin Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {adminSections.map((section, index) => (
             <AdminCard
@@ -281,7 +271,6 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* All Enrollments Table */}
         <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
           <div className="p-6 border-b">
             <h2 className="text-2xl font-bold text-gray-800">All Enrollments</h2>
@@ -354,7 +343,6 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-800">Recent Activity</h3>

@@ -1,58 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, EnrollmentStatus } from '@prisma/client';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { PrismaClient, EnrollmentStatus, UserRole } from '@prisma/client';
+import { getServerSession } from 'next-auth/next';
+import type { Session } from 'next-auth';
+import { authOptions } from '@/app/lib/auth-options'; // Using alias
 
 const prisma = new PrismaClient();
-  
-export async function POST(request: NextRequest) {
+
+export async function POST(req: Request) {
+  const session: Session | null = await getServerSession(authOptions);
+
+  if (!session || !session?.user || session?.user?.role !== UserRole.ADMIN) {
+    return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+  }
+
+  const { enrollmentId } = await req.json();
+
+  if (!enrollmentId) {
+    return new Response(JSON.stringify({ message: 'Enrollment ID is required' }), { status: 400 });
+  }
+
   try {
-    // Verify admin authentication
-    const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    const formData = await request.formData();
-    const enrollmentId = formData.get('enrollmentId') as string;
-
-    if (!enrollmentId) {
-      return NextResponse.redirect(new URL('/admin?error=missing_enrollment_id', request.url));
-    }
-
-    // Check if enrollment exists and is pending
-    const enrollment = await prisma.enrollment.findUnique({
+    const updatedEnrollment = await prisma.enrollment.update({
       where: { id: enrollmentId },
-      include: {
-        user: { select: { name: true } },
-        course: { select: { title: true } }
-      }
+      data: { status: EnrollmentStatus.REJECTED },
+      include: { course: true, user: true },
     });
 
-    if (!enrollment) {
-      return NextResponse.redirect(new URL('/admin?error=enrollment_not_found', request.url));
-    }
-
-    if (enrollment.status !== EnrollmentStatus.PENDING) {
-      return NextResponse.redirect(new URL(`/admin?error=already_${enrollment.status.toLowerCase()}`, request.url));
-    }
-
-    // Update enrollment status to REJECTED
-    await prisma.enrollment.update({
-      where: { id: enrollmentId },
-      data: {
-        status: EnrollmentStatus.REJECTED,
-      },
-    });
-
-    // Redirect back to admin dashboard with success message
-    return NextResponse.redirect(
-      new URL(`/admin?success=Enrollment for ${enrollment.user.name} in ${enrollment.course.title} rejected`, request.url)
-    );
+    return new Response(JSON.stringify(updatedEnrollment), { status: 200 });
   } catch (error) {
     console.error('Error rejecting enrollment:', error);
-    return NextResponse.redirect(new URL('/admin?error=failed_to_reject', request.url));
-  } finally {
-    await prisma.$disconnect();
+    return new Response(JSON.stringify({ message: 'Failed to reject enrollment' }), { status: 500 });
   }
 }

@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,6 +17,9 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "types": [
+      "@prisma/client"
+    ],
     "plugins": [
       {
         "name": "next"
@@ -20,17 +27,28 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/app/*": ["./app/*"],
-      "@/prisma/prisma": ["./app/prisma/prisma"]
+      "@/app/*": [
+        "./app/*"
+      ],
+      "@/prisma/prisma": [
+        "./app/prisma/prisma"
+      ],
+      "~/*": [
+        "./*"
+      ]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "next-auth.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
-, "app/api/scripts/createAdmin.js"  ],
-  "exclude": ["node_modules"]
+    "**/*.mts",
+    "app/api/scripts/createAdmin.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

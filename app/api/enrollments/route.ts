@@ -1,30 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, EnrollmentStatus } from '@prisma/client'; // Import EnrollmentStatus
+import { PrismaClient, EnrollmentStatus } from '@prisma/client';
+import { getServerSession } from 'next-auth/next';
+import type { Session } from 'next-auth';
+import { authOptions } from '@/app/lib/auth-options';
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, courseId, email, name, phoneNumber, paymentInfo } = body;
-
-    if (!userId || !courseId) {
+    // Verify user is authenticated
+    const session: Session | null = await getServerSession(authOptions);
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId or courseId' },
+        { error: 'Unauthorized. Please log in.' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { courseId, phoneNumber } = body;
+
+    if (!courseId || !phoneNumber) {
+      return NextResponse.json(
+        { error: 'Missing required fields: courseId or phoneNumber' },
         { status: 400 }
       );
     }
 
+    // Check if user is already enrolled in this course
+    const existingEnrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId: session.user.id,
+        courseId: courseId,
+        status: {
+          in: [EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED]
+        }
+      }
+    });
+
+    if (existingEnrollment) {
+      const statusMessage = existingEnrollment.status === EnrollmentStatus.PENDING
+        ? 'You already have a pending enrollment for this course.'
+        : 'You are already enrolled in this course.';
+
+      return NextResponse.json(
+        { error: statusMessage },
+        { status: 400 }
+      );
+    }
+
+    // Create new enrollment with PENDING status
     const enrollment = await prisma.enrollment.create({
       data: {
-        userId,
+        userId: session.user.id,
         courseId,
-        email: email || null,
-        name: name || null,
-        phoneNumber: phoneNumber || null,
+        phoneNumber,
         status: EnrollmentStatus.PENDING,
-        paymentInfo,
       },
+      include: {
+        course: {
+          select: { title: true, level: true, price: true }
+        }
+      }
     });
 
     return NextResponse.json(enrollment, { status: 201 });
@@ -39,24 +76,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// app/api/enrollments/route.ts
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session: Session | null = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get enrollments for the current user
     const enrollments = await prisma.enrollment.findMany({
-      include: {
-        user: { select: { name: true, email: true } },
-        course: { select: { title: true, level: true, price: true } },
+      where: {
+        userId: session.user.id
       },
-      orderBy: { createdAt: 'desc' },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            level: true,
+            price: true,
+            image: true
+          }
+        },
+      },
+      orderBy: { enrolledAt: 'desc' },
     });
 
-    // Map to include userId in the response
-    const enrollmentsWithUserId = enrollments.map(enrollment => ({
-      ...enrollment,
-      userId: enrollment.userId, // Make sure this is included
-    }));
-
-    return NextResponse.json(enrollmentsWithUserId);
+    return NextResponse.json(enrollments);
   } catch (error) {
     console.error('Error fetching enrollments:', error);
     return NextResponse.json(

@@ -38,14 +38,14 @@ export default function CakeSchoolWebsite() {
   };
 
   // Unified Add to Cart — works for Cakes, Shawarma, Burgers, Pizza
-  const handleAddToCart = async (name: string, description: string, price: number, image: string) => {
+  const handleAddToCart = async (name: string, cakeType: string, price: number, image: string) => {
     setIsSubmitting(true);
 
     try {
       const response = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, price, image }),
+        body: JSON.stringify({ cakeName: name, cakeType, price, image }),
       });
 
       const data = await response.json();

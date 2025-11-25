@@ -1,24 +1,29 @@
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
 import { Megaphone, Plus, Calendar } from 'lucide-react';
+import { getServerSession } from 'next-auth/next';
+import type { Session } from 'next-auth'; // ✅ ADD THIS IMPORT
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default async function PromotionsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user?.role !== 'ADMIN') redirect('/login');
+  const session = await getServerSession(authOptions as any) as Session | null; // ✅ ADD TYPE CAST
+  
+  if (!session || (session.user as any)?.role !== 'ADMIN') { // ✅ ADD (session.user as any)
+    redirect('/login');
+  }
+
 
   const promotions = await prisma.promotion.findMany({
-    orderBy: [{ dayOfWeek: 'asc' }, { createdAt: 'desc' }],
+    orderBy: [{ createdAt: 'desc' }],
   });
 
   // Group promotions by day
   const promotionsByDay = DAYS.map((day, index) => ({
     day,
     dayIndex: index,
-    promotions: promotions.filter(p => p.dayOfWeek === index),
+    promotions: promotions.filter(p => p.daysOfWeek.includes(index)),
   }));
 
   return (
@@ -142,7 +147,7 @@ export default async function PromotionsPage() {
                           <p className={`font-medium ${promo.active ? 'text-gray-900' : 'text-gray-400'}`}>
                             {promo.message}
                           </p>
-                          
+
                           {/* Date Range */}
                           {(promo.startDate || promo.endDate) && (
                             <p className="text-xs text-gray-500 mt-1">
@@ -161,7 +166,7 @@ export default async function PromotionsPage() {
                           <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${promo.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                             {promo.active ? 'Active' : 'Disabled'}
                           </span>
-                          
+
                           <form action="/api/admin/promotions/toggle" method="POST" className="inline">
                             <input type="hidden" name="id" value={promo.id} />
                             <input type="hidden" name="active" value={promo.active ? 'false' : 'true'} />

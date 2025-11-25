@@ -1,6 +1,6 @@
 // app/components/PromotionBanner.tsx
 import { prisma } from '@/app/lib/prisma';
-import { Megaphone, X, Sparkles } from 'lucide-react';
+import { Megaphone, Sparkles } from 'lucide-react';
 
 async function getTodaysPromotion() {
   const today = new Date();
@@ -9,7 +9,9 @@ async function getTodaysPromotion() {
   return await prisma.promotion.findFirst({
     where: {
       active: true,
-      dayOfWeek: currentDay,
+      daysOfWeek: { // Changed from dayOfWeek to daysOfWeek
+        has: currentDay, // Use 'has' to check if array contains currentDay
+      },
       OR: [
         { startDate: null, endDate: null },
         { startDate: { lte: today }, endDate: null },
@@ -72,11 +74,6 @@ export default async function PromotionBanner() {
                     {promotion.message}
                   </p>
                 </div>
-                
-                {/* Optional: Close button if you want dismissible banner */}
-                {/* <button className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
-                  <X className="w-5 h-5" />
-                </button> */}
               </div>
             </div>
           </div>

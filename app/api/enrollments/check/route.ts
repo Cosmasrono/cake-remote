@@ -1,6 +1,6 @@
 // app/api/enrollments/check/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, EnrollmentStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -22,14 +22,13 @@ export async function GET(request: NextRequest) {
         userId,
         courseId,
         status: {
-          in: ['PENDING', 'APPROVED', 'ACTIVE']
+          in: [EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED]
         }
       },
       select: {
         id: true,
         status: true,
-        createdAt: true,
-        expiresAt: true, // if you have expiration
+        createdAt: true
       }
     });
 

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../[...nextauth]/route';
+import type { Session } from 'next-auth';
+import { authOptions } from '@/app/lib/auth-options';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session: Session | null = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.id) {
       return NextResponse.json({ user: null }, { status: 200 });

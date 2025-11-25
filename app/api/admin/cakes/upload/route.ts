@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Corrected import path
-import { prisma } from '@/prisma/prisma';
+import { getServerSession } from 'next-auth/next';
+import { Session } from 'next-auth';
+import { authOptions } from '@/app/lib/auth-options';
+import { prisma } from '../../../../lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const session = await getServerSession(authOptions) as Session | null;
+    
+    if (!session?.user?.role || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

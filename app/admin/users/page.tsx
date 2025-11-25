@@ -1,15 +1,17 @@
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/lib/auth-options';
 import { PrismaClient } from '@prisma/client';
 import { FaUsers, FaUserCircle } from 'react-icons/fa';
+import Link from 'next/link';
+import { Session } from 'next-auth';
 
 const prisma = new PrismaClient();
 
 export default async function AdminUsersPage() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions as any)) as Session | null; // ✅ Added 'as any'
 
-  if (!session || session.user?.role !== 'ADMIN') {
+  if (!session || (session.user as any)?.role !== 'ADMIN') { // ✅ Added '(session.user as any)'
     redirect('/login');
   }
 
@@ -23,6 +25,8 @@ export default async function AdminUsersPage() {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  // ... rest of your code
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50">
@@ -39,12 +43,13 @@ export default async function AdminUsersPage() {
                 <p className="text-xs text-gray-500">Manage all registered users</p>
               </div>
             </div>
-            
+
+            <Link
               href="/admin/dashboard"
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
             >
               Back to Dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -55,7 +60,7 @@ export default async function AdminUsersPage() {
           <div className="p-6 border-b">
             <h2 className="text-2xl font-bold text-gray-800">All Users ({users.length})</h2>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -89,11 +94,10 @@ export default async function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'ADMIN'
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'ADMIN'
                               ? 'bg-purple-100 text-purple-800'
                               : 'bg-blue-100 text-blue-800'
-                          }`}
+                            }`}
                         >
                           {user.role}
                         </span>

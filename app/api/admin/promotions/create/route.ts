@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
+import { Session } from 'next-auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = (await getServerSession(authOptions)) as Session | null;
     if (!session || session.user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const message = formData.get('message') as string;
     const dayOfWeek = parseInt(formData.get('dayOfWeek') as string);
     const active = formData.get('active') === 'on';
-    
+
     const startDateStr = formData.get('startDate') as string;
     const endDateStr = formData.get('endDate') as string;
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     await prisma.promotion.create({
       data: {
         message,
-        dayOfWeek,
+        daysOfWeek: [dayOfWeek], // Corrected from dayOfWeek to daysOfWeek as an array
         active,
         startDate: startDateStr ? new Date(startDateStr) : null,
         endDate: endDateStr ? new Date(endDateStr) : null,

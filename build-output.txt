@@ -1,0 +1,31 @@
+
+> my-app@0.1.0 build C:\Users\iansoft\cake-remote
+> next build --webpack
+
+   Γû▓ Next.js 16.0.1 (webpack)
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ΓÜá Compiled with warnings in 10.1s
+
+./app/admin/dashboard/page.tsx
+Attempted import error: 'authOptions' is not exported from '@/app/api/auth/[...nextauth]/route' (imported as 'authOptions').
+
+Import trace for requested module:
+./app/admin/dashboard/page.tsx
+
+ Γ£ô Compiled successfully in 17.8s
+   Running TypeScript ...
+Failed to compile.
+
+./app/admin/dashboard/page.tsx:2:10
+Type error: Module '"next-auth"' has no exported member 'getServerSession'.
+
+  1 | import { redirect } from 'next/navigation';
+> 2 | import { getServerSession } from 'next-auth';
+    |          ^
+  3 | import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+  4 | import { PrismaClient } from '@prisma/client';
+  5 | import React from 'react';
+Next.js build worker exited with code: 1 and signal: null
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.
