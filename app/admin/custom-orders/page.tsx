@@ -23,7 +23,7 @@ export default async function CustomOrdersPage({ searchParams }: { searchParams:
   return <main className="bakery-container bakery-section">
     <div className="section-heading">
       <div>
-        <p className="eyebrow">JAPHEE ADMINISTRATION</p>
+        <p className="eyebrow">JAPHE&apos;S ADMINISTRATION</p>
         <h1 className="font-serif text-4xl">Custom cake enquiries.</h1>
       </div>
       <Link href="/admin/dashboard" className="bakery-button secondary">Back to dashboard</Link>

@@ -21,8 +21,8 @@ export function toWhatsAppNumber(phone: string) {
 export function customCakeMessage(details: CustomOrderDetails = {}, reference?: string) {
   const summary = customOrderSummary(details, reference);
   return [
-    '*Custom cake enquiry — Japhee Cakes*',
-    'Hello Japhee, I would like to enquire about a custom cake.',
+    '*Custom cake enquiry — Japhe\'s Cakes*',
+    'Hello Japhe, I would like to enquire about a custom cake.',
     ...(summary.length ? ['', ...summary] : []),
     '',
     'Kindly advise on availability and cost. Thank you.',
@@ -30,5 +30,5 @@ export function customCakeMessage(details: CustomOrderDetails = {}, reference?: 
 }
 
 export function adminReplyMessage(name: string, reference: string) {
-  return `Hello ${name.split(' ')[0] || name}, thank you for your custom cake enquiry with Japhee Cakes (reference ${reference}). I would like to confirm a few details so we can prepare your quote.`;
+  return `Hello ${name.split(' ')[0] || name}, thank you for your custom cake enquiry with Japhe's Cakes (reference ${reference}). I would like to confirm a few details so we can prepare your quote.`;
 }

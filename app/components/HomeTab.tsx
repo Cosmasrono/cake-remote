@@ -5,9 +5,10 @@ import { WHATSAPP_NUMBER } from '@/app/lib/whatsapp';
 
 export default function HomeTab({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   return <>
+    <div className="hero-band">
     <section className="bakery-container hero-grid">
       <div className="hero-copy">
-        <p className="eyebrow">JAPHEE · CAKES & BAKING SCHOOL</p>
+        <p className="eyebrow">JAPHE&apos;S · CAKES & BAKING SCHOOL</p>
         <h1>A little cake.<br />A lovely <em>occasion.</em></h1>
         <p className="hero-description">From a birthday wish to an everyday treat, find something worth sharing. Explore our cakes, create something personal, or learn to bake with us.</p>
         <div className="flex flex-wrap gap-3">
@@ -21,10 +22,11 @@ export default function HomeTab({ setActiveTab }: { setActiveTab: (tab: string) 
         <div className="photo-caption"><span>FOR THE MOMENTS THAT MATTER</span><span>Make it a cake occasion.</span></div>
       </div>
     </section>
+    </div>
     <div className="service-strip">
       <div><CakeSlice size={20} /><span>Cakes for your celebrations</span></div>
       <div><Gift size={20} /><span>Made personal with custom designs</span></div>
-      <div><ChefHat size={20} /><span>Learn at Japhee School of Cakes</span></div>
+      <div><ChefHat size={20} /><span>Learn at Japhe&apos;s School of Cakes</span></div>
     </div>
     <section className="bakery-container bakery-section">
       <div className="section-heading"><div><p className="eyebrow">SOMETHING FOR EVERY OCCASION</p><h2>What brings you in?</h2></div><p>A celebration, a craving, or a new passion.<br />There is a place for it here.</p></div>
@@ -40,8 +42,8 @@ export default function HomeTab({ setActiveTab }: { setActiveTab: (tab: string) 
       </div>
     </section>
     <section className="school-feature bakery-container">
-      <div className="school-photo"><Image src="/images/cake2.jpg" alt="Japhee baking school students celebrating with their certificates" fill sizes="(max-width: 760px) 100vw, 50vw" className="object-cover" /></div>
-      <div className="school-copy"><p className="eyebrow">MORE THAN A BAKERY</p><h2>Your next chapter<br />starts in the kitchen.</h2><p>Meet a community that shares your love for baking. Explore our courses and take the next step with Japhee School of Cakes.</p><button className="bakery-button" onClick={() => setActiveTab('school')}>Find your course <ArrowRight size={17} /></button></div>
+      <div className="school-photo"><Image src="/images/cake2.jpg" alt="Japhe's baking school students celebrating with their certificates" fill sizes="(max-width: 760px) 100vw, 50vw" className="object-cover" /></div>
+      <div className="school-copy"><p className="eyebrow">MORE THAN A BAKERY</p><h2>Your next chapter<br />starts in the kitchen.</h2><p>Meet a community that shares your love for baking. Explore our courses and take the next step with Japhe&apos;s School of Cakes.</p><button className="bakery-button" onClick={() => setActiveTab('school')}>Find your course <ArrowRight size={17} /></button></div>
     </section>
     <section className="bakery-container bakery-section faq-section"><p className="eyebrow">A FEW HELPFUL DETAILS</p><h2>Before you order</h2>
       <details><summary>Can I request a custom cake?</summary><p>Yes. Open our cake collection and select “Request a custom cake”. Share your occasion, preferred date, flavour, and a reference image. If you would rather talk it through, message us on WhatsApp at {WHATSAPP_NUMBER}. Our team will follow up to confirm availability and a quote.</p></details>

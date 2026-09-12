@@ -1,9 +1,9 @@
 import { getAppSession } from '@/app/lib/auth-options';
 // app/api/enrollments/check/route.ts
+import { prisma } from '@/app/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, EnrollmentStatus } from '@prisma/client';
+import { EnrollmentStatus } from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,7 +54,5 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to check enrollment status' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

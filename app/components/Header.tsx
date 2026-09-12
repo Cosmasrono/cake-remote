@@ -21,7 +21,7 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: Props) 
   return <header className="bakery-header">
     <a href="#main-content" className="skip-link">Skip to content</a>
     <div className="bakery-container header-inner">
-      <button className="wordmark" onClick={() => navigate('home')} aria-label="Japhee home">japhee<span>CAKES & BAKING SCHOOL</span></button>
+      <button className="wordmark" onClick={() => navigate('home')} aria-label="Japhe's home">Japhe&apos;s<span>CAKES & BAKING SCHOOL</span></button>
       <nav className="desktop-nav" aria-label="Main navigation">{nav.map(item => <button key={item.id} onClick={() => navigate(item.id)} aria-current={(item.id === activeTab || item.id === 'shawarma' && ['pizza', 'burger'].includes(activeTab)) ? 'page' : undefined}>{item.label}</button>)}</nav>
       <div className="header-actions">
         {session?.user ? <><Link className="account-link" href="/orders">My orders</Link>{['ADMIN', 'SUPER_ADMIN'].includes(session.user.role) && <Link className="account-link" href="/admin/dashboard">Admin</Link>}<button className="icon-button" aria-label="Sign out" onClick={() => signOut({ callbackUrl: '/' })}><LogOut size={18} /></button></> : <Link className="account-link" href="/login">Sign in</Link>}

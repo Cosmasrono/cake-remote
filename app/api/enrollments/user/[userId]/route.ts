@@ -1,9 +1,8 @@
 import { getAppSession } from '@/app/lib/auth-options';
 // app/api/enrollments/user/[userId]/route.ts
+import { prisma } from '@/app/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
@@ -34,7 +33,5 @@ export async function GET(
       { error: 'Failed to fetch user enrollments' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

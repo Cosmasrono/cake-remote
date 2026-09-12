@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/app/lib/prisma';
 import { hashPassword } from '@/app/lib/auth';
 
-const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +66,5 @@ export async function POST(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

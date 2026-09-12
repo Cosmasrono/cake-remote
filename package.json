@@ -7,7 +7,13 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "mock:orders": "tsx prisma/mock-custom-orders.ts",
+    "mock:orders:clean": "tsx prisma/mock-custom-orders.ts --clean",
+    "mock:orders:reset": "tsx prisma/mock-custom-orders.ts --reset",
+    "mock:products": "tsx prisma/mock-products.ts",
+    "mock:products:clean": "tsx prisma/mock-products.ts --clean",
+    "mock:products:reset": "tsx prisma/mock-products.ts --reset"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

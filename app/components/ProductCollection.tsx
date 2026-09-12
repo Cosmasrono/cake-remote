@@ -20,7 +20,7 @@ export default function ProductCollection({ endpoint, title, description, handle
   const products = (data || []).filter(p => `${p.name} ${p.type || p.description || ''}`.toLowerCase().includes(query.toLowerCase())).slice().sort((a, b) => sort === 'low' ? (a.price ?? Infinity) - (b.price ?? Infinity) : sort === 'high' ? (b.price ?? -Infinity) - (a.price ?? -Infinity) : 0);
   const add = async (p: Product) => { if (!p.price) return; setBusy(p.id); try { await handleAddToCart(p.name, p.type || p.description || '', p.price, p.image); } finally { setBusy(null); } };
   return <section className="bakery-container">
-    <div className="catalog-heading"><p className="eyebrow">FROM THE JAPHEE KITCHEN</p><h1>{title}</h1><p>{description}</p></div>
+    <div className="catalog-heading"><p className="eyebrow">FROM JAPHE&apos;S KITCHEN</p><h1>{title}</h1><p>{description}</p></div>
     <div className="catalog-tools"><input aria-label="Search products" type="search" placeholder="Find your favourite…" value={query} onChange={e => setQuery(e.target.value)} /><select aria-label="Sort products" value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Latest additions</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div>
     {error ? <div className="empty-state" role="alert"><h2>Our menu is taking a moment.</h2><p>Please try again to see the latest selection.</p><button className="bakery-button" onClick={() => mutate()}>Try again</button></div> :
       isLoading ? <div className="product-grid" aria-label="Loading products">{[0,1,2].map(i => <div key={i} className="product-photo animate-pulse" />)}</div> :
