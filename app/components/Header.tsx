@@ -1,199 +1,35 @@
 'use client';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ShoppingBag, Menu, X, LogOut } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
+import useSWR from 'swr';
+import type { AppSession } from '@/app/lib/auth-options';
 
-import React, { useState, useEffect } from 'react';
-import { Cake, ShoppingCart, User, LogOut, Shield, Pizza, Beef, Flame, Truck } from 'lucide-react';
-import { useSession, signIn, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Session } from 'next-auth';
-
-interface HeaderProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  onCartClick: () => void;
-}
-
-interface CartItem {
-  id: string;
-  quantity: number;
-}
-
-export default function Header({ activeTab, setActiveTab, onCartClick }: HeaderProps) {
-  const { data: session, status } = useSession() as { data: Session | null; status: 'loading' | 'authenticated' | 'unauthenticated' };
-  const router = useRouter();
-  const [cartCount, setCartCount] = useState(0);
-
-  // Fetch cart count
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        const res = await fetch('/api/cart');
-        if (res.ok) {
-          const items: CartItem[] = await res.json();
-          const count = items.reduce((sum, item) => sum + item.quantity, 0);
-          setCartCount(count);
-        }
-      } catch (error) {
-        console.error('Failed to fetch cart count:', error);
-      }
-    };
-
-    fetchCartCount();
-
-    // Refresh cart count every 5 seconds when on the page
-    const interval = setInterval(fetchCartCount, 5000);
-
-    // Listen for cart update events
-    const handleCartUpdate = () => fetchCartCount();
-    window.addEventListener('cartUpdated', handleCartUpdate);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('cartUpdated', handleCartUpdate);
-    };
-  }, []);
-
-  const handleLogin = () => signIn();
-  const handleLogout = () => signOut();
-  const handleAdminClick = () => router.push('/admin/dashboard');
-
-  const isAdmin = session?.user?.role === 'ADMIN';
-  const userName = session?.user?.name || 'User';
-
-  const navItems = [
-    { id: 'home', label: 'Home', icon: null },
-    { id: 'cakes', label: 'Our Cakes', icon: Cake },
-    { id: 'shawarma', label: 'Shawarma', icon: Flame },
-    { id: 'burger', label: 'Burgers', icon: Beef },
-    { id: 'pizza', label: 'Pizza', icon: Pizza },
-    { id: 'school', label: 'Cake School', icon: null },
-    { id: 'orders', label: 'Track Orders', icon: Truck },
-  ];
-
-  return (
-    <header className="bg-white/95 backdrop-blur-sm shadow-lg sticky top-0 z-50 border-b border-pink-100">
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex items-center justify-between gap-4">
-
-          {/* Logo - Compact */}
-          <div className="flex items-center gap-3 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('home')}>
-            <div className="p-2 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl shadow-lg">
-              <Cake className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
-                Japhee
-              </h1>
-              {/* <p className="text-xs text-gray-500 hidden xl:block">Cakes • Shawarma • Burgers • Pizza • Baking School</p> */}
-            </div>
-          </div>
-
-          {/* Desktop Navigation - Compact */}
-          <nav className="hidden lg:flex items-center gap-1 bg-gray-50/80 backdrop-blur-sm px-3 py-2 rounded-full shadow-inner">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-all duration-300 whitespace-nowrap ${isActive
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg scale-105'
-                    : 'text-gray-700 hover:bg-pink-100 hover:text-pink-700'
-                    }`}
-                >
-                  {Icon && <Icon className="w-4 h-4" />}
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Right Side: Cart + Auth - Compact */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Cart */}
-            <button
-              onClick={onCartClick}
-              className="relative p-2.5 bg-gradient-to-br from-pink-100 to-purple-100 rounded-xl hover:shadow-xl transition-all hover:scale-110 group"
-              title="View Cart"
-            >
-              <ShoppingCart className="w-5 h-5 text-pink-600 group-hover:text-purple-600 transition" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-
-            {/* Auth Section */}
-            {status === 'loading' ? (
-              <div className="w-24 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-            ) : session?.user ? (
-              <div className="flex items-center gap-2">
-                {/* Admin Button */}
-                {isAdmin && (
-                  <button
-                    onClick={handleAdminClick}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-bold hover:shadow-xl transition-all hover:scale-105"
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span className="hidden xl:inline">Admin</span>
-                  </button>
-                )}
-
-                {/* User Greeting */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
-                  <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {userName[0].toUpperCase()}
-                  </div>
-                  <div className="hidden xl:block">
-                    <p className="text-xs font-semibold text-gray-800">Hi, {userName}!</p>
-                    {isAdmin && <p className="text-xs text-purple-600 font-bold">Admin</p>}
-                  </div>
-                </div>
-
-                {/* Logout */}
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl text-sm font-bold shadow-xl hover:shadow-2xl transition-all hover:scale-105 whitespace-nowrap"
-              >
-                <User className="w-5 h-5" />
-                <span className="hidden sm:inline">Login / Sign Up</span>
-                <span className="sm:hidden">Login</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        <nav className="lg:hidden mt-3 flex flex-wrap justify-center gap-2 bg-gray-50 rounded-xl p-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition ${activeTab === item.id
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                  : 'bg-white text-gray-700 shadow-md'
-                  }`}
-              >
-                {Icon && <Icon className="w-3.5 h-3.5" />}
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+interface Props { activeTab: string; setActiveTab: (tab: string) => void; onCartClick: () => void }
+export default function Header({ activeTab, setActiveTab, onCartClick }: Props) {
+  const { data: session } = useSession() as { data: AppSession | null };
+  const [open, setOpen] = useState(false);
+  const { data, mutate } = useSWR<{ quantity: number }[]>(session?.user ? '/api/cart' : null, async (url: string) => {
+    const res = await fetch(url); if (!res.ok) throw new Error('Unable to load bag'); return res.json();
+  });
+  useEffect(() => { const refresh = () => { void mutate(); }; window.addEventListener('cartUpdated', refresh); return () => window.removeEventListener('cartUpdated', refresh); }, [mutate]);
+  useEffect(() => { const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
+  const count = data?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const nav = [{ id: 'home', label: 'Home' }, { id: 'cakes', label: 'Our cakes' }, { id: 'shawarma', label: 'Savoury menu' }, { id: 'school', label: 'Baking school' }];
+  const navigate = (id: string) => { setActiveTab(id); setOpen(false); };
+  return <header className="bakery-header">
+    <a href="#main-content" className="skip-link">Skip to content</a>
+    <div className="bakery-container header-inner">
+      <button className="wordmark" onClick={() => navigate('home')} aria-label="Japhee home">japhee<span>CAKES & BAKING SCHOOL</span></button>
+      <nav className="desktop-nav" aria-label="Main navigation">{nav.map(item => <button key={item.id} onClick={() => navigate(item.id)} aria-current={(item.id === activeTab || item.id === 'shawarma' && ['pizza', 'burger'].includes(activeTab)) ? 'page' : undefined}>{item.label}</button>)}</nav>
+      <div className="header-actions">
+        {session?.user ? <><Link className="account-link" href="/orders">My orders</Link>{['ADMIN', 'SUPER_ADMIN'].includes(session.user.role) && <Link className="account-link" href="/admin/dashboard">Admin</Link>}<button className="icon-button" aria-label="Sign out" onClick={() => signOut({ callbackUrl: '/' })}><LogOut size={18} /></button></> : <Link className="account-link" href="/login">Sign in</Link>}
+        <button className="bag-button" onClick={onCartClick} aria-label={`Shopping bag, ${count} items`}><ShoppingBag size={19} /><span>{count}</span></button>
+        <button className="icon-button mobile-toggle" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button>
       </div>
-    </header>
-  );
+    </div>
+    {open && <nav id="mobile-navigation" className="mobile-nav" aria-label="Mobile navigation">{nav.map(item => <button key={item.id} onClick={() => navigate(item.id)} aria-current={activeTab === item.id ? 'page' : undefined}>{item.label}</button>)}{session?.user && <button onClick={() => navigate('courses')}>My courses</button>}</nav>}
+  </header>;
 }
+

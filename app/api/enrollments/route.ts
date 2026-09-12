@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, EnrollmentStatus } from '@prisma/client';
-import { getServerSession } from 'next-auth/next';
-import type { Session } from 'next-auth';
-import { authOptions } from '@/app/lib/auth-options';
-
-const prisma = new PrismaClient();
+import { EnrollmentStatus } from '@prisma/client';
+import { getAppSession } from '@/app/lib/auth-options';
+import { prisma } from '@/app/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify user is authenticated
-    const session: Session | null = await getServerSession(authOptions);
+    const session = await getAppSession();
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized. Please log in.' },
@@ -27,29 +23,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is already enrolled in this course
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
         userId: session.user.id,
-        courseId: courseId,
+        courseId,
         status: {
-          in: [EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED]
-        }
-      }
+          in: [EnrollmentStatus.PENDING, EnrollmentStatus.APPROVED],
+        },
+      },
     });
 
     if (existingEnrollment) {
-      const statusMessage = existingEnrollment.status === EnrollmentStatus.PENDING
-        ? 'You already have a pending enrollment for this course.'
-        : 'You are already enrolled in this course.';
-
-      return NextResponse.json(
-        { error: statusMessage },
-        { status: 400 }
-      );
+      const statusMessage =
+        existingEnrollment.status === EnrollmentStatus.PENDING
+          ? 'You already have a pending enrollment for this course.'
+          : 'You are already enrolled in this course.';
+      return NextResponse.json({ error: statusMessage }, { status: 400 });
     }
 
-    // Create new enrollment with PENDING status
     const enrollment = await prisma.enrollment.create({
       data: {
         userId: session.user.id,
@@ -58,10 +49,8 @@ export async function POST(request: NextRequest) {
         status: EnrollmentStatus.PENDING,
       },
       include: {
-        course: {
-          select: { title: true, level: true, price: true }
-        }
-      }
+        course: { select: { title: true, level: true, price: true } },
+      },
     });
 
     return NextResponse.json(enrollment, { status: 201 });
@@ -71,35 +60,21 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to create enrollment' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session: Session | null = await getServerSession(authOptions);
+    const session = await getAppSession();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get enrollments for the current user
     const enrollments = await prisma.enrollment.findMany({
-      where: {
-        userId: session.user.id
-      },
+      where: { userId: session.user.id },
       include: {
         course: {
-          select: {
-            id: true,
-            title: true,
-            level: true,
-            price: true,
-            image: true
-          }
+          select: { id: true, title: true, level: true, price: true, image: true },
         },
       },
       orderBy: { enrolledAt: 'desc' },
@@ -112,7 +87,5 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch enrollments' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

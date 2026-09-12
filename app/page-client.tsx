@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import HomeTab from './components/HomeTab';
 import CakesTab from './components/CakesTab';
@@ -21,8 +20,9 @@ import { Session } from 'next-auth';
 
 export default function CakeSchoolWebsite() {
   const { data: session } = useSession() as { data: Session | null };
-  const [activeTab, setActiveTab] = useState('home');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, updateActiveTab] = useState('home');
+  const setActiveTab = (tab: string) => { updateActiveTab(tab); window.history.pushState(null, '', '#' + tab); window.scrollTo({ top: 0, behavior: 'instant' }); };
+  useEffect(() => { const sync = () => { const tab = window.location.hash.slice(1); if (['home', 'cakes', 'shawarma', 'burger', 'pizza', 'school', 'courses', 'orders'].includes(tab)) updateActiveTab(tab); else updateActiveTab('home'); }; sync(); window.addEventListener('popstate', sync); window.addEventListener('hashchange', sync); return () => { window.removeEventListener('popstate', sync); window.removeEventListener('hashchange', sync); }; }, []);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
     show: false,
     message: '',
@@ -31,6 +31,7 @@ export default function CakeSchoolWebsite() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showEnrollmentPopup, setShowEnrollmentPopup] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [isEnrollSubmitting, setIsEnrollSubmitting] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ show: true, message, type });
@@ -39,8 +40,6 @@ export default function CakeSchoolWebsite() {
 
   // Unified Add to Cart — works for Cakes, Shawarma, Burgers, Pizza
   const handleAddToCart = async (name: string, cakeType: string, price: number, image: string) => {
-    setIsSubmitting(true);
-
     try {
       const response = await fetch('/api/cart', {
         method: 'POST',
@@ -52,14 +51,14 @@ export default function CakeSchoolWebsite() {
 
       if (response.ok) {
         showToast(`${name} added to cart!`, 'success');
+        // Notify Header to refresh cart count
+        window.dispatchEvent(new Event('cartUpdated'));
       } else {
         showToast(data.error || 'Failed to add item. Try again.', 'error');
       }
     } catch (error) {
       console.error('Cart error:', error);
       showToast('Network error. Please check your connection.', 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -73,11 +72,10 @@ export default function CakeSchoolWebsite() {
   };
 
   const handleEnrollmentSubmission = async (phoneNumber: string) => {
-    setIsSubmitting(true);
-    // Ensure userId is available before making the API call
+    setIsEnrollSubmitting(true);
     if (!session?.user?.id) {
       showToast('User not logged in.', 'error');
-      setIsSubmitting(false);
+      setIsEnrollSubmitting(false);
       return;
     }
     try {
@@ -86,113 +84,110 @@ export default function CakeSchoolWebsite() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseId: selectedCourseId,
-          userId: session.user.id, // Accessing id directly after check
-          email: session.user.email,
-          name: session.user.name,
           phoneNumber,
         }),
       });
 
       if (response.ok) {
-        showToast('Enrollment successful! We’ll contact you soon.', 'success');
+        showToast("Enrollment successful! We'll contact you soon.", 'success');
         setShowEnrollmentPopup(false);
         setSelectedCourseId(null);
       } else {
-        showToast('Enrollment failed. Please try again.', 'error');
+        const data = await response.json();
+        showToast(data.error || 'Enrollment failed. Please try again.', 'error');
       }
     } catch (error) {
       showToast('Error occurred. Please try again.', 'error');
     } finally {
-      setIsSubmitting(false);
+      setIsEnrollSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-yellow-50">
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onCartClick={() => setIsCartOpen(true)}
-      />
+    <div className="min-h-screen">
 
-      {/* Toast Notification */}
-      {toast.show && <Toast message={toast.message} type={toast.type} />}
+      <div className="relative z-10">
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onCartClick={() => setIsCartOpen(true)}
+        />
 
-      {/* Cart Sidebar */}
-      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+        {/* Toast Notification */}
+        {toast.show && <Toast message={toast.message} type={toast.type} />}
 
-      {/* Main Content with Smooth Tab Transitions */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="pt-20 pb-10" // padding for fixed header
-        >
-          {/* Home */}
-          {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} />}
+        {/* Cart Sidebar */}
+        <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
 
-          {/* Cakes */}
-          {activeTab === 'cakes' && (
-            <CakesTab handleAddToCart={handleAddToCart} isSubmitting={isSubmitting} />
-          )}
+        {/* Main Content with Smooth Tab Transitions */}
+        <main id="main-content" tabIndex={-1}>
+        {['shawarma', 'burger', 'pizza'].includes(activeTab) && <nav className="category-nav" aria-label="Savoury categories">{[['shawarma', 'Shawarma'], ['burger', 'Burgers'], ['pizza', 'Pizza']].map(([id, label]) => <button key={id} aria-current={activeTab === id ? 'page' : undefined} onClick={() => setActiveTab(id)}>{label}</button>)}</nav>}
+          <div
+            key={activeTab}
+            className="pb-10"
+          >
+            {/* Home */}
+            {activeTab === 'home' && <HomeTab setActiveTab={setActiveTab} />}
 
-          {/* Shawarma */}
-          {activeTab === 'shawarma' && (
-            <ShawarmaTab handleAddToCart={handleAddToCart} isSubmitting={isSubmitting} />
-          )}
+            {/* Cakes */}
+            {activeTab === 'cakes' && (
+              <CakesTab handleAddToCart={handleAddToCart} />
+            )}
 
-          {/* Burgers */}
-          {activeTab === 'burger' && (
-            <BurgerTab handleAddToCart={handleAddToCart} isSubmitting={isSubmitting} />
-          )}
+            {/* Shawarma */}
+            {activeTab === 'shawarma' && (
+              <ShawarmaTab handleAddToCart={handleAddToCart} />
+            )}
 
-          {/* Pizza */}
-          {activeTab === 'pizza' && (
-            <PizzaTab handleAddToCart={handleAddToCart} isSubmitting={isSubmitting} />
-          )}
+            {/* Burgers */}
+            {activeTab === 'burger' && (
+              <BurgerTab handleAddToCart={handleAddToCart} />
+            )}
 
-          {/* Baking School */}
-          {activeTab === 'school' && (
-            <SchoolTab
-              handleEnrollCourse={handleEnrollCourse}
-              isSubmitting={isSubmitting}
-              // Removed userId prop
-            />
-          )}
+            {/* Pizza */}
+            {activeTab === 'pizza' && (
+              <PizzaTab handleAddToCart={handleAddToCart} />
+            )}
 
-          {/* My Courses (Logged-in users only) */}
-          {activeTab === 'courses' && session?.user && (
-            <CourseTab showToast={showToast} />
-          )}
+            {/* Baking School */}
+            {activeTab === 'school' && (
+              <SchoolTab
+                handleEnrollCourse={handleEnrollCourse}
+                isSubmitting={isEnrollSubmitting}
+              />
+            )}
 
-          {/* Admin Panel (Logged-in users only) */}
-          {activeTab === 'admin' && session?.user && (
-            <AdminTab showToast={showToast} />
-          )}
+            {/* My Courses (Logged-in users only) */}
+            {activeTab === 'courses' && session?.user && (
+              <CourseTab />
+            )}
 
-          {/* Track Orders (Logged-in users only) */}
-          {activeTab === 'orders' && session?.user && (
-            <OrdersTab userId={session.user.id} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+            {/* Admin Panel (Logged-in users only) */}
+            {activeTab === 'admin' && session?.user && (
+              <AdminTab showToast={showToast} />
+            )}
 
-      {/* Enrollment Popup */}
-      <EnrollmentPopup
-        isOpen={showEnrollmentPopup}
-        onClose={() => setShowEnrollmentPopup(false)}
-        onEnroll={handleEnrollmentSubmission}
-        courseId={selectedCourseId}
-        userEmail={session?.user?.email || ''}
-        userName={session?.user?.name || ''}
-        isSubmitting={isSubmitting}
-      />
+            {/* Track Orders (Logged-in users only) */}
+            {activeTab === 'orders' && session?.user && (
+              <OrdersTab userId={session.user.id} />
+            )}
+          </div>
+        </main>
 
-      {/* Footer */}
-      <Footer setActiveTab={setActiveTab} />
+        {/* Enrollment Popup */}
+        <EnrollmentPopup
+          isOpen={showEnrollmentPopup}
+          onClose={() => setShowEnrollmentPopup(false)}
+          onEnroll={handleEnrollmentSubmission}
+          courseId={selectedCourseId}
+          userEmail={session?.user?.email || ''}
+          userName={session?.user?.name || ''}
+          isSubmitting={isEnrollSubmitting}
+        />
+
+        {/* Footer */}
+        <Footer setActiveTab={setActiveTab} />
+      </div>
     </div>
   );
 }

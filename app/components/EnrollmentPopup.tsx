@@ -1,106 +1,58 @@
 'use client';
-
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { X } from 'lucide-react';
-
-interface EnrollmentPopupProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onEnroll: (phoneNumber: string) => void;
-  courseId: string | null;
-  userEmail: string;
-  userName: string;
-  isSubmitting: boolean;
+import Link from 'next/link';
+import useSWR from 'swr';
+import { formatToKsh } from '@/app/lib/currency';
+interface Course { id: string; title: string; description: string; price: number; level: string }
+interface Props { isOpen: boolean; onClose: () => void; onEnroll: (phone: string) => void; courseId: string | null; userEmail: string; userName: string; isSubmitting: boolean }
+export default function EnrollmentPopup(props: Props) {
+  return <Dialog open={props.isOpen} onClose={props.onClose} className="relative z-50"><div className="fixed inset-0 bg-black/35" aria-hidden="true" /><div className="fixed inset-0 overflow-y-auto p-4 flex items-center justify-center"><DialogPanel className="checkout-panel w-full max-w-lg max-h-[90vh] overflow-y-auto"><EnrollmentForm key={props.courseId + String(props.isOpen)} {...props} /></DialogPanel></div></Dialog>;
 }
-
-export default function EnrollmentPopup({
-  isOpen,
-  onClose,
-  onEnroll,
-  courseId,
-  userEmail,
-  userName,
-  isSubmitting,
-}: EnrollmentPopupProps) {
-  const [phoneNumber, setPhoneNumber] = useState('');
-
+function EnrollmentForm({ isOpen, onClose, onEnroll, courseId, userName, isSubmitting }: Props) {
+  const { data: courses, error: loadError } = useSWR<Course[]>(isOpen ? '/api/courses' : null, async (url: string) => { const res = await fetch(url); if (!res.ok) throw new Error('Unable to load course'); return res.json(); });
+  const course = courses?.find(c => c.id === courseId);
+  const [mode, setMode] = useState('pay');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [paymentId, setPaymentId] = useState('');
+  const [paid, setPaid] = useState(false);
+  const [group, setGroup] = useState('');
   useEffect(() => {
-    if (!isOpen) {
-      setPhoneNumber(''); // Reset phone number when popup closes
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (courseId && userEmail && userName && phoneNumber) {
-      onEnroll(phoneNumber);
-    }
+    if (!paymentId || !isOpen) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let attempts = 0;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/check-payment?paymentId=' + paymentId);
+        const data = await res.json();
+        if (stopped) return;
+        if (res.ok && data.status === 'completed') { setPaid(true); setBusy(false); const url = data.courseInfo?.whatsappLink; if (typeof url === 'string' && url.startsWith('https://chat.whatsapp.com/')) setGroup(url); return; }
+        if (res.ok && ['failed','cancelled'].includes(data.status)) { setError('Payment was not completed. Please try again.'); setPaymentId(''); setBusy(false); return; }
+      } catch { /* Retry transient network failures. */ }
+      if (stopped) return;
+      if (++attempts >= 40) { setError('Confirmation is taking longer than expected. Check My orders before paying again.'); setBusy(false); return; }
+      timer = setTimeout(poll, 3000);
+    };
+    timer = setTimeout(poll, 2000);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [paymentId, isOpen]);
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); const form = new FormData(e.currentTarget); const phone = String(form.get('phone') || '');
+    if (mode === 'enquiry') { onEnroll(phone); return; }
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/enrollments/pay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId, phoneNumber: phone, customerName: userName }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unable to start payment.');
+      setPaymentId(data.paymentId);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Please try again.'); setBusy(false); }
   };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-        >
-          <X className="w-6 h-6" />
-        </button>
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Enroll in Course</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="courseId" className="block text-sm font-medium text-gray-700">Course ID</label>
-            <input
-              type="text"
-              id="courseId"
-              value={courseId || ''}
-              disabled
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50"
-            />
-          </div>
-          <div>
-            <label htmlFor="userName" className="block text-sm font-medium text-gray-700">Your Name</label>
-            <input
-              type="text"
-              id="userName"
-              value={userName}
-              disabled
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50"
-            />
-          </div>
-          <div>
-            <label htmlFor="userEmail" className="block text-sm font-medium text-gray-700">Your Email</label>
-            <input
-              type="email"
-              id="userEmail"
-              value={userEmail}
-              disabled
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50"
-            />
-          </div>
-          <div>
-            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">Phone Number</label>
-            <input
-              type="tel"
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500"
-              placeholder="e.g., +15551234567"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isSubmitting || !phoneNumber.trim()}
-            className="w-full bg-pink-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-pink-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Submitting...' : 'Request for Enrollment'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  return <><div className="flex justify-between items-start gap-4"><div><p className="eyebrow">YOUR NEXT CHAPTER</p><DialogTitle className="font-serif text-3xl">{paid ? 'Welcome to the school.' : course?.title || 'Course enrolment'}</DialogTitle></div><button className="icon-button" aria-label="Close enrolment" onClick={onClose}><X size={20} /></button></div>
+    {paid ? <div className="mt-6"><p className="text-sm leading-7">Your payment has been confirmed. Your enrolment details are saved in your account.</p>{group && <a href={group} target="_blank" rel="noopener noreferrer" className="bakery-button mt-6">Join your class group</a>}<Link href="/orders" className="text-link">View payment details →</Link></div> :
+    <>{error && <p className="notice mt-5" role="alert">{error}</p>}{paymentId ? <div className="mt-6"><p className="text-sm leading-7" role="status">Check your phone for the M-Pesa prompt. Enter your PIN on your phone to complete payment.</p><Link className="text-link" href="/orders">Check My orders →</Link></div> : !course ? <p className="py-6" role="status">{loadError ? 'We could not load this course. Please close and try again.' : 'Loading course details…'}</p> : <form onSubmit={submit} className="mt-6"><p className="text-sm text-stone-600 mb-5 leading-7">{course.description}</p><div className="checkout-total mb-6"><span>{course.level}</span><strong>{formatToKsh(course.price)}</strong></div><label>How would you like to enrol?<select value={mode} onChange={e => setMode(e.target.value)}><option value="pay">Pay with M-Pesa</option><option value="enquiry">Enquire before paying</option></select></label><label>Phone number<input name="phone" type="tel" inputMode="tel" autoComplete="tel" required placeholder="0712 345 678" /></label><button className="bakery-button" disabled={busy || isSubmitting}>{busy || isSubmitting ? 'Please wait…' : mode === 'pay' ? 'Pay ' + formatToKsh(course.price) : 'Send enrolment enquiry'}</button><p className="text-xs text-stone-500 mt-4 leading-6">{mode === 'pay' ? 'Payment is confirmed with M-Pesa before your enrolment is approved.' : 'Our team will follow up to discuss the course and next steps.'}</p></form>}</>}
+  </>;
 }
+

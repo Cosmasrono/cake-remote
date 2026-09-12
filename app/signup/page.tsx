@@ -71,11 +71,11 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-[#fcfaf7] flex items-center justify-center p-4">
+      <div className="bg-white rounded-md border border-stone-200 w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="bg-pink-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="w-8 h-8 text-pink-600" />
+            <UserPlus className="w-8 h-8 text-[#713c46]" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800">Create Account</h1>
           <p className="text-gray-600 mt-2">Join us today</p>
@@ -165,7 +165,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition disabled:bg-gray-400"
+            className="w-full bg-[#713c46] text-white py-3 rounded-lg font-semibold hover:bg-[#542c34] transition disabled:bg-gray-400"
           >
             {isLoading ? 'Creating account...' : 'Create Account'}
           </button>
@@ -174,7 +174,7 @@ export default function SignupPage() {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="text-pink-600 font-semibold hover:underline">
+            <Link href="/login" className="text-[#713c46] font-semibold hover:underline">
               Sign in
             </Link>
           </p>

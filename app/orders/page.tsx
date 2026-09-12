@@ -1,25 +1,10 @@
-'use client';
-
-import React from 'react';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { getAppSession } from '@/app/lib/auth-options';
 import OrdersTab from '@/app/components/OrdersTab';
-import { useSession } from 'next-auth/react';
-import { Session } from 'next-auth';
-import { useRouter } from 'next/navigation';
-
-export default function OrdersPage() {
-  const { data: session, status } = useSession() as { data: Session | null; status: 'loading' | 'authenticated' | 'unauthenticated' };
-  const router = useRouter();
-
-  if (status === 'loading') {
-    return <div className="text-center py-12">Loading user session...</div>;
-  }
-
-  if (!session?.user?.id) {
-    router.push('/login'); // Redirect to login if not authenticated
-    return null;
-  }
-
-  return (
-    <OrdersTab userId={session.user.id} />
-  );
+export default async function OrdersPage() {
+  const session = await getAppSession();
+  if (!session?.user?.id) redirect('/login?callbackUrl=/orders');
+  return <><header className="bakery-header"><div className="bakery-container header-inner"><Link href="/" className="wordmark">japhee<span>CAKES & BAKING SCHOOL</span></Link><Link href="/#cakes" className="text-link">Continue shopping →</Link></div></header><main><OrdersTab userId={session.user.id} /></main></>;
 }
+

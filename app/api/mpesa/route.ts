@@ -1,148 +1,39 @@
-// app/api/mpesa/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { randomUUID } from 'crypto';
+import { prisma } from '@/app/lib/prisma';
+import { getAppSession } from '@/app/lib/auth-options';
+import { getCheckout, CheckoutError } from '@/app/lib/checkout';
+import { initiatePayHeroStkPush, formatKenyanPhoneNumber } from '@/app/lib/payhero';
 
 export async function POST(request: NextRequest) {
-  let payment: any = null; // Declare at function scope
-  
+  const session = await getAppSession();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Please sign in to check out.' }, { status: 401 });
+  let paymentId: string | undefined;
   try {
-    const { phoneNumber, amount, cartItems, userId } = await request.json(); // Destructure userId
-
-    if (!phoneNumber || !amount || !userId) { // Add userId to validation
-      return NextResponse.json(
-        { error: 'Missing phone number, amount, or user ID' }, // Update error message
-        { status: 400 }
-      );
-    }
-
-    const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY;
-    const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET;
-    const PASSKEY = process.env.MPESA_PASSKEY;
-    const SHORTCODE = process.env.MPESA_SHORTCODE;
-    const CALLBACK_URL = process.env.MPESA_CALLBACK_URL;
-
-    if (!CONSUMER_KEY || !CONSUMER_SECRET || !PASSKEY || !SHORTCODE || !CALLBACK_URL) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    // Format phone number
-    let formattedPhone = phoneNumber.replace(/\s/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '254' + formattedPhone.substring(1);
-    } else if (formattedPhone.startsWith('+')) {
-      formattedPhone = formattedPhone.substring(1);
-    } else if (!formattedPhone.startsWith('254')) {
-      formattedPhone = '254' + formattedPhone;
-    }
-
-    // Get access token
-    const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString('base64');
-    const tokenResponse = await axios.get(
-      'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-      { headers: { Authorization: `Basic ${auth}` } }
-    );
-    const accessToken = tokenResponse.data.access_token;
-
-    // Save initial payment to database with PENDING status
-    payment = await prisma.payment.create({
-      data: {
-        userId, // Add userId here
-        phoneNumber: formattedPhone,
-        amount: Math.ceil(amount),
-        cartItems: cartItems || null,
-        status: 'PENDING',
-        merchantRequestId: '',
-        checkoutRequestId: ''
-      },
-    });
-
-    // Initiate STK Push
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-    const password = Buffer.from(`${SHORTCODE}${PASSKEY}${timestamp}`).toString('base64');
-
-    const stkPushPayload = {
-      BusinessShortCode: SHORTCODE,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.ceil(amount),
-      PartyA: formattedPhone,
-      PartyB: SHORTCODE,
-      PhoneNumber: formattedPhone,
-      CallBackURL: CALLBACK_URL,
-      AccountReference: 'CakeOrder',
-      TransactionDesc: 'Cake Purchase',
-    };
-
-    const stkPushResponse = await axios.post(
-      'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-      stkPushPayload,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    console.log('STK Push Response:', stkPushResponse.data);
-
-    // Update the payment record with Mpesa details
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        merchantRequestId: stkPushResponse.data.MerchantRequestID,
-        checkoutRequestId: stkPushResponse.data.CheckoutRequestID,
-      },
-    });
-
-    console.log('Payment saved to database:', payment.id);
-
-    return NextResponse.json({
-      message: 'STK Push initiated successfully. Please check your phone.',
-      paymentId: payment.id,
-      checkoutRequestId: stkPushResponse.data.CheckoutRequestID,
-      ...stkPushResponse.data
-    }, { status: 200 });
-
+    const body = await request.json();
+    if (body.isTestMode) return NextResponse.json({ error: 'Simulated payments are not available.' }, { status: 400 });
+    const phone = typeof body.phoneNumber === 'string' ? formatKenyanPhoneNumber(body.phoneNumber) : '';
+    if (!/^0[17]\d{8}$/.test(phone)) throw new CheckoutError('Enter a valid Kenyan mobile number.');
+    const method = body.deliveryMethod || 'delivery';
+    const name = typeof body.customerName === 'string' ? body.customerName.trim() : '';
+    const address = typeof body.deliveryAddress === 'string' ? body.deliveryAddress.trim() : '';
+    if (!name || name.length > 150 || (method === 'delivery' && (!address || address.length > 500))) throw new CheckoutError('Enter your name and delivery address.');
+    const quote = await getCheckout(session.user.id, method);
+    if (body.expectedAmount !== quote.total) throw new CheckoutError('Your bag or prices have changed. Refresh checkout before paying.', 409);
+    const recent = await prisma.payment.findFirst({ where: { userId: session.user.id, status: 'PENDING', createdAt: { gte: new Date(Date.now() - 120000) } } });
+    if (recent) return NextResponse.json({ error: 'A payment is already pending. Check My orders before trying again.', paymentId: recent.id }, { status: 409 });
+    const payment = await prisma.payment.create({ data: {
+      userId: session.user.id, phoneNumber: phone, amount: quote.total, status: 'PENDING', merchantRequestId: '', checkoutRequestId: 'TEMP_' + randomUUID(),
+      cartItems: { items: quote.items, subtotal: quote.subtotal, deliveryFee: quote.deliveryFee, deliveryDetails: { customerName: name, phoneNumber: phone, deliveryAddress: method === 'pickup' ? 'Store pickup' : address, deliveryMethod: method, deliveryDate: typeof body.deliveryDate === 'string' ? body.deliveryDate.slice(0, 100) : '', orderNotes: typeof body.orderNotes === 'string' ? body.orderNotes.slice(0, 1000) : '' } },
+    } });
+    paymentId = payment.id;
+    const response = await initiatePayHeroStkPush({ amount: quote.total, phoneNumber: phone, externalReference: payment.id, customerName: name });
+    if (response.success === false || (!response.reference && !response.CheckoutRequestID)) throw new Error('Provider did not accept payment');
+    await prisma.payment.update({ where: { id: payment.id }, data: { checkoutRequestId: response.CheckoutRequestID || response.reference!, merchantRequestId: response.reference || response.CheckoutRequestID! } });
+    return NextResponse.json({ paymentId: payment.id, checkoutRequestId: response.CheckoutRequestID || response.reference, amount: quote.total, quote });
   } catch (error) {
-    console.error('Error initiating Mpesa STK Push:', error);
-    
-    // Update payment status if payment was created
-    if (payment?.id) {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { 
-          status: 'FAILED', 
-          resultDesc: 'STK Push initiation failed' 
-        },
-      }).catch(e => console.error('Failed to update payment status:', e));
-    }
-
-    if (axios.isAxiosError(error)) {
-      return NextResponse.json(
-        { 
-          error: 'Failed to initiate Mpesa STK Push', 
-          details: error.response?.data || error.message 
-        },
-        { status: error.response?.status || 500 }
-      );
-    }
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to initiate Mpesa STK Push', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
+    if (paymentId) await prisma.payment.updateMany({ where: { id: paymentId, status: 'PENDING' }, data: { resultDesc: 'Payment initiation could not be confirmed. Check status before retrying.' } });
+    return NextResponse.json({ error: error instanceof CheckoutError ? error.message : 'Payment could not be initiated. Check My orders before trying again.', paymentId }, { status: error instanceof CheckoutError ? error.status : 502 });
   }
 }
+

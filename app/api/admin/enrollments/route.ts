@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, EnrollmentStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getAppSession } from '@/app/lib/auth-options';
+import { NextResponse } from 'next/server';
+import { EnrollmentStatus } from '@prisma/client';
+import { prisma } from '@/app/lib/prisma';
 
 export async function GET() {
+  const session = await getAppSession();
+  if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   try {
     const pendingEnrollments = await prisma.enrollment.findMany({
       where: { status: EnrollmentStatus.PENDING },
@@ -21,7 +24,5 @@ export async function GET() {
       { error: 'Failed to fetch pending enrollments' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

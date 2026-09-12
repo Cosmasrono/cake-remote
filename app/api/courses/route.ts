@@ -1,3 +1,4 @@
+import { getAppSession } from '@/app/lib/auth-options';
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
@@ -20,6 +21,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await getAppSession();
+  if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   try {
     const { title, description, level, price, image } = await request.json();
 

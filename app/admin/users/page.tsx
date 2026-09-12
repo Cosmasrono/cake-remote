@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
+import { getAppSession } from '@/app/lib/auth-options';
 import { authOptions } from '@/app/lib/auth-options';
 import { PrismaClient } from '@prisma/client';
 import { FaUsers, FaUserCircle } from 'react-icons/fa';
@@ -9,9 +9,9 @@ import { Session } from 'next-auth';
 const prisma = new PrismaClient();
 
 export default async function AdminUsersPage() {
-  const session = (await getServerSession(authOptions as any)) as Session | null; // ✅ Added 'as any'
+  const session = await getAppSession(); // ✅ Added 'as any'
 
-  if (!session || (session.user as any)?.role !== 'ADMIN') { // ✅ Added '(session.user as any)'
+  if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role || '')) { // ✅ Added '(session.user as any)'
     redirect('/login');
   }
 

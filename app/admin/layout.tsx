@@ -1,0 +1,8 @@
+import { redirect } from 'next/navigation';
+import { getAppSession } from '@/app/lib/auth-options';
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getAppSession();
+  if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) redirect('/login');
+  return children;
+}
+

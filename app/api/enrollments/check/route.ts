@@ -1,3 +1,4 @@
+import { getAppSession } from '@/app/lib/auth-options';
 // app/api/enrollments/check/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, EnrollmentStatus } from '@prisma/client';
@@ -7,7 +8,9 @@ const prisma = new PrismaClient();
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const session = await getAppSession();
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = session.user.id;
     const courseId = searchParams.get('courseId');
 
     if (!userId || !courseId) {

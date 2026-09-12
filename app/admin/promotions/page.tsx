@@ -2,15 +2,15 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
 import { Megaphone, Plus, Calendar } from 'lucide-react';
-import { getServerSession } from 'next-auth/next';
+import { getAppSession } from '@/app/lib/auth-options';
 import type { Session } from 'next-auth'; // ✅ ADD THIS IMPORT
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default async function PromotionsPage() {
-  const session = await getServerSession(authOptions as any) as Session | null; // ✅ ADD TYPE CAST
+  const session = await getAppSession(); // ✅ ADD TYPE CAST
   
-  if (!session || (session.user as any)?.role !== 'ADMIN') { // ✅ ADD (session.user as any)
+  if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role || '')) { // ✅ ADD (session.user as any)
     redirect('/login');
   }
 

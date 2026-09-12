@@ -12,12 +12,13 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      UserRole   @default(USER) // Changed to use UserRole enum
+  role      UserRole   @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   Enrollment Enrollment[]
-  payments   Payment[] // Add inverse relation to Payment model
+  payments   Payment[]
+  cartItems  Cart[]
 }
 
 enum UserRole {
@@ -39,6 +40,8 @@ model Cake {
 
 model Cart {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
   cakeName  String
   cakeType  String
   price     Float
@@ -81,12 +84,10 @@ model Enrollment {
   user        User             @relation(fields: [userId], references: [id])
   courseId    String           @db.ObjectId
   course      Course           @relation(fields: [courseId], references: [id])
-  email       String?
-  name        String?
   phoneNumber String?
   status      EnrollmentStatus @default(PENDING)
   enrolledAt  DateTime         @default(now())
-  paymentInfo String? // Placeholder for payment gateway transaction ID or similar
+  paymentInfo String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 }
@@ -118,7 +119,7 @@ enum PaymentStatus {
 
 
 model CustomOrder {
-  id              String   @id @default(cuid()) @map("_id") // This is the fix
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   phone           String
   occasion        String?
@@ -128,10 +129,11 @@ model CustomOrder {
   message         String?
   inspirationLink String?
   image           String?
+  source          String?
   status          String   @default("pending")
   createdAt       DateTime @default(now())
 
-  @@map("custom_orders") // optional: rename collection name
+  @@map("custom_orders")
 }
 
 

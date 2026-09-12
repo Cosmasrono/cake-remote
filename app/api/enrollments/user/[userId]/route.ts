@@ -1,3 +1,4 @@
+import { getAppSession } from '@/app/lib/auth-options';
 // app/api/enrollments/user/[userId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
@@ -9,7 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }  // Change to Promise
 ) {
   try {
-    const { userId } = await params;  // Add await here
+    const { userId } = await params;
+    const session = await getAppSession();
+    if (!session?.user || (session.user.id !== userId && !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });  // Add await here
 
     const enrollments = await prisma.enrollment.findMany({
       where: {

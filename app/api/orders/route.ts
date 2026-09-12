@@ -1,49 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { cakeName, cakeType } = body;
-
-    if (!cakeName || !cakeType) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    const order = await prisma.order.create({
-      data: {
-        cakeName,
-        cakeType,
-      },
-    });
-
-    return NextResponse.json(order, { status: 201 });
-  } catch (error) {
-    console.error('Error creating order:', error);
-    return NextResponse.json(
-      { error: 'Failed to create order' },
-      { status: 500 }
-    );
-  }
-}
-
+import { NextResponse } from 'next/server';
+import { prisma } from '@/app/lib/prisma';
+import { getAppSession } from '@/app/lib/auth-options';
+export async function POST() { return NextResponse.json({ error: 'Place orders through checkout.' }, { status: 410 }); }
 export async function GET() {
-  try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json(orders);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch orders' },
-      { status: 500 }
-    );
-  }
+  const session = await getAppSession();
+  if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  try { return NextResponse.json(await prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, take: 100 })); }
+  catch { return NextResponse.json({ error: 'Unable to load orders.' }, { status: 500 }); }
 }
+

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { getServerSession } from 'next-auth/next';
-import { Session } from 'next-auth';
-import { authOptions } from '@/app/lib/auth-options';
+import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '../../../../lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin
-    const session = await getServerSession(authOptions) as Session | null;
+    const session = await getAppSession();
     
-    if (!session?.user?.role || session.user.role !== 'ADMIN') {
+    if (!session?.user?.role || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -56,7 +54,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

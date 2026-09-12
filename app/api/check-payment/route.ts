@@ -1,62 +1,22 @@
-// app/api/check-payment/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
+import { prisma } from '@/app/lib/prisma';
+import { getAppSession } from '@/app/lib/auth-options';
+import { reconcilePayment } from '@/app/lib/reconcile-payment';
 export async function GET(request: NextRequest) {
-  // Disable caching for this API route
-  request.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  request.headers.set('Pragma', 'no-cache');
-  request.headers.set('Expires', '0');
-
-  const { searchParams } = new URL(request.url);
-  const checkoutRequestId = searchParams.get('checkoutRequestId');
-  
-  if (!checkoutRequestId) {
-    return NextResponse.json(
-      { error: 'Missing checkoutRequestId' }, 
-      { status: 400 }
-    );
-  }
-  
+  const session = await getAppSession();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const params = request.nextUrl.searchParams;
+  if (params.has('manualCode') || params.has('simulateSuccess')) return NextResponse.json({ error: 'Payment must be verified with the provider.' }, { status: 400 });
+  const id = params.get('paymentId');
+  const checkoutRequestId = params.get('checkoutRequestId');
+  if ((!id && !checkoutRequestId) || (id && !/^[a-f\d]{24}$/i.test(id))) return NextResponse.json({ error: 'Valid payment reference required.' }, { status: 400 });
   try {
-    const payment = await prisma.payment.findUnique({
-      where: { checkoutRequestId },
-    });
-
-    if (!payment) {
-      console.log(`⏳ Payment not found yet: ${checkoutRequestId}`);
-      return NextResponse.json({ 
-        status: 'pending', 
-        message: 'Payment record not found yet' 
-      });
-    }
-    
-    console.log(`📊 Payment status for ${checkoutRequestId}: ${payment.status}`);
-    
-    // Return status in lowercase for frontend consistency
-    return NextResponse.json({
-      status: payment.status.toLowerCase(),
-      checkoutRequestId: payment.checkoutRequestId,
-      mpesaReceiptNumber: payment.mpesaReceiptNumber,
-      amount: payment.amount,
-      resultDesc: payment.resultDesc,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
-    });
-    
-  } catch (error) {
-    console.error('❌ Error checking payment status:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to check payment status', 
-        status: 'failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
-  }
+    const existing = await prisma.payment.findFirst({ where: { userId: session.user.id, ...(id ? { id } : { checkoutRequestId: checkoutRequestId! }) } });
+    if (!existing) return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
+    const payment = await reconcilePayment(existing.id);
+    const payload = payment.cartItems as { isCourseEnrollment?: boolean; courseId?: string } | null;
+    const courseInfo = payment.status === 'COMPLETED' && payload?.isCourseEnrollment && payload.courseId ? await prisma.course.findUnique({ where: { id: payload.courseId }, select: { title: true, level: true, whatsappLink: true } }) : null;
+    return NextResponse.json({ status: payment.status.toLowerCase(), paymentId: payment.id, checkoutRequestId: payment.checkoutRequestId, mpesaReceiptNumber: payment.mpesaReceiptNumber, amount: payment.amount, resultDesc: payment.resultDesc, createdAt: payment.createdAt, updatedAt: payment.updatedAt, isCourseEnrollment: !!payload?.isCourseEnrollment, courseInfo }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch { return NextResponse.json({ error: 'Unable to check payment. Please try again.' }, { status: 503 }); }
 }
+
