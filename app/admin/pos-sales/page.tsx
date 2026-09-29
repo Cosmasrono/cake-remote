@@ -3,48 +3,35 @@ import { redirect } from 'next/navigation';
 import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
 import PosSalesReports from './PosSalesReports';
+import PosReportFilters from './PosReportFilters';
+import { getPosReportRange, type ReportQuery } from '@/app/lib/pos-report-range';
+import type { PosSale } from '@prisma/client';
 
-export default async function AdminPosSalesPage() {
+export default async function AdminPosSalesPage({ searchParams }: { searchParams: Promise<ReportQuery> }) {
   const session = await getAppSession();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
     redirect('/login');
   }
 
-  let sales: any[] = [];
+  let range = getPosReportRange({});
+  let error = '';
   try {
-    if ((prisma as any).posSale) {
-      sales = await (prisma as any).posSale.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 300,
-      });
-    } else {
-      const rawRes: any = await prisma.$runCommandRaw({
-        find: 'pos_sales',
-        sort: { createdAt: -1 },
-        limit: 300,
-      });
-      sales = (rawRes?.cursor?.firstBatch || []).map((doc: any) => ({
-        id: doc._id?.$oid || doc._id || doc.saleNumber,
-        saleNumber: doc.saleNumber,
-        cashierId: doc.cashierId?.$oid || doc.cashierId,
-        cashierName: doc.cashierName,
-        items: doc.items || [],
-        subtotal: doc.subtotal || 0,
-        discount: doc.discount || 0,
-        total: doc.total || 0,
-        paymentMethod: doc.paymentMethod || 'CASH',
-        amountPaid: doc.amountPaid || doc.total || 0,
-        changeDue: doc.changeDue || 0,
-        mpesaCode: doc.mpesaCode || null,
-        customerName: doc.customerName || null,
-        customerPhone: doc.customerPhone || null,
-        notes: doc.notes || null,
-        status: doc.status || 'COMPLETED',
-        createdAt: doc.createdAt?.$date || doc.createdAt || new Date().toISOString(),
-      }));
-    }
+    range = getPosReportRange(await searchParams);
   } catch (err) {
-    console.error('Error loading sales in admin page:', err);
+    error = err instanceof Error ? err.message : 'Choose a valid date range.';
+  }
+
+  let sales: PosSale[] = [];
+  if (!error) {
+    try {
+      sales = await prisma.posSale.findMany({
+        where: { status: 'COMPLETED', createdAt: { gte: range.from, lt: range.to } },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (err) {
+      console.error('Error loading sales in admin page:', err);
+      error = 'Could not load the sales report. Please try again.';
+    }
   }
 
   return (
@@ -64,7 +51,13 @@ export default async function AdminPosSalesPage() {
         </div>
       </div>
 
-      <PosSalesReports initialSales={JSON.parse(JSON.stringify(sales))} />
+      <PosReportFilters key={`${range.period}-${range.date}-${range.start}-${range.end}`} period={range.period} date={range.date} start={range.start} end={range.end} />
+      {error ? <p role="alert" className="checkout-panel text-red-700">{error}</p> : (
+        <>
+          <p className="text-sm text-stone-600 mb-6">Completed payments: {range.start} to {range.end} · Kenya time (EAT)</p>
+          <PosSalesReports initialSales={JSON.parse(JSON.stringify(sales))} />
+        </>
+      )}
     </main>
   );
 }

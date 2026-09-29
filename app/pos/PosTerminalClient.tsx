@@ -751,7 +751,7 @@ export default function PosTerminalClient({
           {['ADMIN', 'SUPER_ADMIN'].includes(cashier.role) && (
             <Link
               href="/admin/pos-sales"
-              className="hidden md:inline-block px-3 py-1.5 rounded-lg bg-[#713c46]/10 hover:bg-[#713c46]/20 text-[#713c46] text-xs font-semibold transition-colors"
+              className="inline-block px-3 py-1.5 rounded-lg bg-[#713c46]/10 hover:bg-[#713c46]/20 text-[#713c46] text-xs font-semibold transition-colors"
               title="View Complete Admin Audit & Analytics"
             >
               Reports 📊

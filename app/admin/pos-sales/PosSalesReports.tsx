@@ -32,7 +32,7 @@ interface PosSaleRecord {
 }
 
 export default function PosSalesReports({ initialSales }: { initialSales: PosSaleRecord[] }) {
-  const [sales] = useState<PosSaleRecord[]>(initialSales);
+  const sales = initialSales;
   const [selectedCashier, setSelectedCashier] = useState('ALL');
   const [selectedMethod, setSelectedMethod] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,8 +66,9 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
   const totalOrders = filteredSales.length;
 
   // Breakdown by Cashier
-  const cashierStats = cashiers.map((cName) => {
-    const cSales = sales.filter((s) => s.cashierName === cName);
+  const activeCashiers = Array.from(new Set(filteredSales.map((s) => s.cashierName)));
+  const cashierStats = activeCashiers.map((cName) => {
+    const cSales = filteredSales.filter((s) => s.cashierName === cName);
     const cRevenue = cSales.reduce((sum, s) => sum + s.total, 0);
     const cCash = cSales.filter((s) => s.paymentMethod === 'CASH').reduce((sum, s) => sum + s.total, 0);
     const cMpesa = cSales.filter((s) => s.paymentMethod === 'MPESA').reduce((sum, s) => sum + s.total, 0);
@@ -99,11 +100,11 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
 
         <div className="checkout-panel border-l-4 border-l-emerald-600">
           <div className="flex items-center justify-between">
-            <p className="text-xs uppercase font-semibold text-stone-500">Cash In Drawer</p>
+            <p className="text-xs uppercase font-semibold text-stone-500">Cash Payments</p>
             <FaMoneyBillWave className="text-emerald-600 text-xl" />
           </div>
           <p className="font-serif text-3xl mt-3 text-stone-900">{formatKes(cashTotal)}</p>
-          <p className="text-xs text-stone-400 mt-1">Physical counter currency</p>
+          <p className="text-xs text-stone-400 mt-1">Cash sales after change</p>
         </div>
 
         <div className="checkout-panel border-l-4 border-l-green-600">
@@ -120,7 +121,7 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
             <p className="text-xs uppercase font-semibold text-stone-500">Active Cashiers</p>
             <FaUserTie className="text-amber-600 text-xl" />
           </div>
-          <p className="font-serif text-3xl mt-3 text-stone-900">{cashiers.length}</p>
+          <p className="font-serif text-3xl mt-3 text-stone-900">{activeCashiers.length}</p>
           <p className="text-xs text-stone-400 mt-1">Staff members with sales</p>
         </div>
       </div>
@@ -234,12 +235,14 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
                   </td>
                   <td className="px-6 py-4 text-xs text-stone-600 whitespace-nowrap">
                     {new Date(s.createdAt).toLocaleDateString('en-GB', {
+                      timeZone: 'Africa/Nairobi',
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
                     })}{' '}
                     <span className="text-stone-400">
                       {new Date(s.createdAt).toLocaleTimeString([], {
+                        timeZone: 'Africa/Nairobi',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
@@ -307,7 +310,7 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-500">Date/Time:</span>
-                  <span>{new Date(activeReceipt.createdAt).toLocaleString()}</span>
+                  <span>{new Date(activeReceipt.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Nairobi' })} EAT</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-500">Cashier:</span>
