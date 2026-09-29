@@ -5,7 +5,10 @@ import { hashPassword } from '@/app/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const body = await request.json();
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 150) : '';
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
 
     // Validate input
     if (!name || !email || !password) {
@@ -23,9 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+    }
+
+    // Check if user exists (any capitalisation of the same address)
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } }
     });
 
     if (existingUser) {

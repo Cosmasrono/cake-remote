@@ -1,6 +1,7 @@
 import { getAppSession } from '@/app/lib/auth-options';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { STAGE_LABEL, stageOf } from '@/app/lib/order-stages';
 
 export async function GET(
   request: NextRequest,
@@ -52,8 +53,14 @@ export async function GET(
         image: item.image || '',
       }));
 
+      // Only orders the bakery is acting on have a step to show: paid ones, and cash orders.
+      const isCourse = !!(payment.cartItems as { isCourseEnrollment?: boolean } | null)?.isCourseEnrollment;
+      const inProcess = !isCourse && (payment.status === 'COMPLETED' || payment.merchantRequestId === 'PAY_ON_DELIVERY');
+      const stage = stageOf(payment.fulfilment);
+
       return {
         id: payment.id,
+        stageLabel: inProcess ? STAGE_LABEL[stage] : null,
         status: payment.status.toLowerCase(),
         total: payment.amount,
         phoneNumber: payment.phoneNumber,

@@ -18,6 +18,9 @@ export interface AppSession {
   expires: string;
 }
 
+/** How often a signed-in user's role is re-read from the database. */
+const ROLE_RECHECK_MS = 5 * 60 * 1000;
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt' as const,
@@ -34,8 +37,9 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        // Emails are matched case-insensitively (older accounts may be stored in mixed case).
+        const user = await prisma.user.findFirst({
+          where: { email: { equals: credentials.email.trim(), mode: 'insensitive' } },
         });
 
         if (!user) return null;
@@ -57,6 +61,16 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as AppUser).role;
         token.id = user.id;
+        token.roleCheckedAt = Date.now();
+        return token;
+      }
+      // The role lives in the token, so re-read it every few minutes: a demoted
+      // or deleted staff member loses access quickly, not when the token expires.
+      if (token.id && Date.now() - Number(token.roleCheckedAt || 0) > ROLE_RECHECK_MS) {
+        const current = await prisma.user.findUnique({ where: { id: token.id as string }, select: { role: true } });
+        token.role = current?.role ?? '';
+        if (!current) token.id = '';
+        token.roleCheckedAt = Date.now();
       }
       return token;
     },
@@ -64,7 +78,9 @@ export const authOptions: NextAuthOptions = {
       return { ...session, user: { ...session.user, role: token.role as string, id: token.id as string } };
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  // .env names it AUTH_SECRET; next-auth v4 reads NEXTAUTH_SECRET. Accept both,
+  // so tokens are never signed with next-auth's development fallback.
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
 };
 
 /**

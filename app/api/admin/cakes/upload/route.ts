@@ -1,57 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { getAppSession } from '@/app/lib/auth-options';
-import { prisma } from '../../../../lib/prisma';
+import { prisma } from '@/app/lib/prisma';
+import { ImageUploadError, saveImage } from '@/app/lib/uploads';
+
+const text = (value: FormDataEntryValue | null, max: number) =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is admin
     const session = await getAppSession();
-    
     if (!session?.user?.role || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
-    const file = formData.get('image') as File;
-    const name = formData.get('name') as string;
-    const type = formData.get('type') as string;
-    const price = parseFloat(formData.get('price') as string);
+    const file = formData.get('image');
+    const name = text(formData.get('name'), 150);
+    const type = text(formData.get('type'), 150);
+    const price = Number(formData.get('price'));
 
-    if (!file || !name || !type || isNaN(price)) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!(file instanceof File) || !name || !type || !Number.isFinite(price) || price <= 0) {
+      return NextResponse.json({ error: 'Provide an image, name, type, and a price above 0.' }, { status: 400 });
     }
 
-    // Create uploads directory
-    const uploadsDir = path.join(process.cwd(), 'public/uploads/cakes');
-    try {
-      await mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      // Directory exists
-    }
+    // Validates the file's real type and size, and picks a random file name.
+    const imageUrl = await saveImage(file, 'cakes');
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-    const filepath = path.join(uploadsDir, filename);
-    await writeFile(filepath, buffer);
-
-    const imageUrl = `/uploads/cakes/${filename}`;
-
-    // Save to DB
     const cake = await prisma.cake.create({
-      data: {
-        name,
-        type,
-        price,
-        image: imageUrl,
-        rating: 5,
-      },
+      data: { name, type, price, image: imageUrl, rating: 5 },
     });
 
     return NextResponse.json({ success: true, cake });
   } catch (error) {
+    if (error instanceof ImageUploadError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }

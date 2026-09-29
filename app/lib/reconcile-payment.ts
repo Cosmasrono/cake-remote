@@ -6,7 +6,8 @@ export async function reconcilePayment(id: string) {
   const payment = await prisma.payment.findUniqueOrThrow({ where: { id } });
   if (payment.status !== 'PENDING') return payment;
   const reference = payment.merchantRequestId || payment.checkoutRequestId;
-  if (/^(TEMP_|TEST_|COURSE_)/.test(reference)) return payment;
+  // Cash-on-delivery orders are settled at the till, never by the provider.
+  if (/^(TEMP_|TEST_|COURSE_|PAY_ON_DELIVERY)/.test(reference)) return payment;
   const live = await getPayHeroTransactionStatus(reference);
   const status = verifiedPaymentStatus(payment.amount, reference, live);
   if (status === 'PENDING') return payment;

@@ -18,6 +18,8 @@ const readDetails = (form: HTMLFormElement): CustomOrderDetails => {
   return {
     name: value('name'), phone: value('phone'), occasion: value('occasion'), date: value('date'),
     flavor: value('flavor'), size: value('size'), message: value('message'), inspirationLink: value('inspirationLink'),
+    deliveryMethod: value('deliveryMethod'),
+    deliveryAddress: value('deliveryMethod') === 'delivery' ? value('deliveryAddress') : null,
   };
 };
 
@@ -37,6 +39,7 @@ export default function CustomOrderModal({ isOpen, onClose }: CustomOrderModalPr
   const [reference, setReference] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [handover, setHandover] = useState<'pickup' | 'delivery'>('pickup');
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -54,6 +57,7 @@ export default function CustomOrderModal({ isOpen, onClose }: CustomOrderModalPr
         setReference(null);
         form.reset();
         setImagePreview(null);
+        setHandover('pickup');
       }, 3500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit your enquiry');
@@ -204,6 +208,48 @@ export default function CustomOrderModal({ isOpen, onClose }: CustomOrderModalPr
                 />
               </div>
             </div>
+
+            <fieldset>
+              <legend className="block text-sm font-medium mb-2">Pickup or delivery? *</legend>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ['pickup', 'Store pickup', 'Collect the cake from the shop.'],
+                  ['delivery', 'Delivery', 'We bring it to you. Delivery is KSh 350, or free on orders of KSh 5,000 and above.'],
+                ] as const).map(([value, label, hint]) => (
+                  <label
+                    key={value}
+                    className={`p-3 border rounded-lg cursor-pointer transition ${
+                      handover === value ? 'border-[#713c46] bg-[#fbf5f4]' : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value={value}
+                      checked={handover === value}
+                      onChange={() => setHandover(value)}
+                      className="mr-2 accent-[#713c46]"
+                    />
+                    <span className="font-semibold text-sm">{label}</span>
+                    <span className="block text-xs text-gray-500 mt-1">{hint}</span>
+                  </label>
+                ))}
+              </div>
+              {handover === 'delivery' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium mb-2" htmlFor="custom-delivery-address">Delivery address *</label>
+                  <textarea
+                    id="custom-delivery-address"
+                    name="deliveryAddress"
+                    required
+                    rows={2}
+                    maxLength={500}
+                    className="w-full px-4 py-3 border rounded-lg"
+                    placeholder="Area, street, building, apartment/house number"
+                  />
+                </div>
+              )}
+            </fieldset>
 
             <div>
               <label className="block text-sm font-medium mb-2">Message on Cake</label>

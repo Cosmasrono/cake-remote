@@ -17,8 +17,10 @@ import Cart from './components/Cart';
 import EnrollmentPopup from './components/EnrollmentPopup';
 import { useSession } from 'next-auth/react';
 import { Session } from 'next-auth';
+import { useRouter } from 'next/navigation';
 
 export default function CakeSchoolWebsite() {
+  const router = useRouter();
   const { data: session } = useSession() as { data: Session | null };
   const [activeTab, updateActiveTab] = useState('home');
   const setActiveTab = (tab: string) => { updateActiveTab(tab); window.history.pushState(null, '', '#' + tab); window.scrollTo({ top: 0, behavior: 'instant' }); };
@@ -39,7 +41,13 @@ export default function CakeSchoolWebsite() {
   };
 
   // Unified Add to Cart — works for Cakes, Shawarma, Burgers, Pizza
+  const askToSignIn = (message = 'Please sign in or create an account to add items to your bag.') => {
+    showToast(message, 'error');
+    setTimeout(() => router.push('/login'), 1500);
+  };
+
   const handleAddToCart = async (name: string, cakeType: string, price: number, image: string) => {
+    if (!session?.user) return askToSignIn();
     try {
       const response = await fetch('/api/cart', {
         method: 'POST',
@@ -47,6 +55,7 @@ export default function CakeSchoolWebsite() {
         body: JSON.stringify({ cakeName: name, cakeType, price, image }),
       });
 
+      if (response.status === 401) return askToSignIn();
       const data = await response.json();
 
       if (response.ok) {
@@ -63,10 +72,7 @@ export default function CakeSchoolWebsite() {
   };
 
   const handleEnrollCourse = (courseId: string) => {
-    if (!session?.user?.id) {
-      showToast('Please log in to enroll.', 'error');
-      return;
-    }
+    if (!session?.user?.id) return askToSignIn('Please sign in or create an account to enrol.');
     setSelectedCourseId(courseId);
     setShowEnrollmentPopup(true);
   };

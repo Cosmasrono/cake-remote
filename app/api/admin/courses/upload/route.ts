@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
 import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
+import { ImageUploadError, saveImage } from '@/app/lib/uploads';
+
+const text = (value: FormDataEntryValue | null, max: number) =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,39 +15,26 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const level = formData.get('level') as string;
-    const price = parseFloat(formData.get('price') as string);
-    const image = formData.get('image') as File;
+    const title = text(formData.get('title'), 150);
+    const description = text(formData.get('description'), 5000);
+    const level = text(formData.get('level'), 60);
+    const price = Number(formData.get('price'));
+    const image = formData.get('image');
 
-    if (!title || !description || !level || isNaN(price) || !image) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!title || !description || !level || !Number.isFinite(price) || price <= 0 || !(image instanceof File)) {
+      return NextResponse.json({ error: 'Provide a title, description, level, image, and a price above 0.' }, { status: 400 });
     }
 
-    // Handle image upload
-    const buffer = Buffer.from(await image.arrayBuffer());
-    const filename = `${Date.now()}-${image.name}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'courses');
-
-    // Ensure the upload directory exists
-    await require('fs').promises.mkdir(uploadDir, { recursive: true });
-
-    const imagePath = `/uploads/courses/${filename}`;
-    await writeFile(path.join(process.cwd(), 'public', imagePath), buffer);
+    // Validates the file's real type and size, and picks a random file name.
+    const imagePath = await saveImage(image, 'courses');
 
     const course = await prisma.course.create({
-      data: {
-        title,
-        description,
-        level,
-        price,
-        image: imagePath,
-      },
+      data: { title, description, level, price, image: imagePath },
     });
 
     return NextResponse.json({ message: 'Course uploaded successfully', course }, { status: 201 });
   } catch (error) {
+    if (error instanceof ImageUploadError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('Course upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

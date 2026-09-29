@@ -17,6 +17,15 @@ export interface CustomOrderDetails {
   size?: string | null;
   message?: string | null;
   inspirationLink?: string | null;
+  deliveryMethod?: string | null;
+  deliveryAddress?: string | null;
+}
+
+/** "Delivery to Kilimani, …" or "Store pickup" — how the cake reaches the customer. */
+export function handoverLabel(details: Pick<CustomOrderDetails, 'deliveryMethod' | 'deliveryAddress'>) {
+  return details.deliveryMethod === 'delivery'
+    ? `Delivery${details.deliveryAddress?.trim() ? ' to ' + details.deliveryAddress.trim() : ''}`
+    : 'Store pickup';
 }
 
 export function customOrderSummary(details: CustomOrderDetails, reference?: string) {
@@ -24,6 +33,7 @@ export function customOrderSummary(details: CustomOrderDetails, reference?: stri
     ['Reference', reference],
     ['Name', details.name],
     ['Phone', details.phone],
+    ['Pickup or delivery', details.deliveryMethod ? handoverLabel(details) : null],
     ['Occasion', details.occasion],
     ['Preferred date', details.date],
     ['Flavour', details.flavor],

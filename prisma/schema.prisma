@@ -13,16 +13,19 @@ model User {
   email     String   @unique
   password  String
   role      UserRole   @default(USER)
+  pin       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   Enrollment Enrollment[]
   payments   Payment[]
   cartItems  Cart[]
+  posSales   PosSale[]
 }
 
 enum UserRole {
   USER
+  CASHIER
   ADMIN
   SUPER_ADMIN
 }
@@ -106,6 +109,10 @@ model Payment {
   mpesaReceiptNumber  String?
   transactionDate     String?
   cartItems           Json?         // Store cart items
+  // Where a website order is in the kitchen/delivery process (null = new).
+  // NEW | PREPARING | OUT_FOR_DELIVERY | READY | DELIVERED | COLLECTED | CANCELLED
+  fulfilment          String?
+  fulfilmentLog       Json?         // [{ stage, at, by }]
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 }
@@ -129,6 +136,8 @@ model CustomOrder {
   message         String?
   inspirationLink String?
   image           String?
+  deliveryMethod  String?  // "pickup" | "delivery" (older enquiries: not set = pickup)
+  deliveryAddress String?
   source          String?
   status          String   @default("pending")
   createdAt       DateTime @default(now())
@@ -153,4 +162,48 @@ model Promotion {
   updatedAt DateTime @updatedAt
   
   @@map("promotions")
+}
+
+model PosSale {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  saleNumber    String   @unique
+  cashierId     String   @db.ObjectId
+  cashier       User     @relation(fields: [cashierId], references: [id])
+  cashierName   String
+  items         Json     // Array of { id, name, category, price, quantity, subtotal }
+  subtotal      Float
+  discount      Float    @default(0)
+  total         Float
+  paymentMethod String   // "CASH" | "MPESA"
+  amountPaid    Float
+  changeDue     Float    @default(0)
+  mpesaCode     String?  // M-Pesa transaction code / receipt (e.g. QK84...)
+  customerName  String?
+  customerPhone String?
+  notes         String?
+  status        String   @default("COMPLETED") // "COMPLETED", "VOIDED"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("pos_sales")
+}
+
+// An M-Pesa prompt sent from the till. The ticket waits here until PayHero
+// confirms the payment; only then is it recorded as a PosSale.
+model PosMpesaRequest {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  reference    String?  // PayHero's reference for the STK push
+  cashierId    String   @db.ObjectId
+  cashierName  String
+  phone        String
+  amount       Float
+  sale         Json     // the priced ticket (PreparedSale)
+  status       String   @default("PENDING") // PENDING | COMPLETING | COMPLETED | FAILED
+  saleNumber   String?
+  mpesaReceipt String?
+  resultDesc   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("pos_mpesa_requests")
 }

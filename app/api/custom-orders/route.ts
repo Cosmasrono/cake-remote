@@ -13,6 +13,11 @@ export async function POST(request: Request) {
     const name = text(formData.get('name'), 90);
     const phone = text(formData.get('phone'), 30);
     if (!name || !phone) return NextResponse.json({ error: 'Please share your name and phone number.' }, { status: 400 });
+    const deliveryMethod = text(formData.get('deliveryMethod'), 20) === 'delivery' ? 'delivery' : 'pickup';
+    const deliveryAddress = deliveryMethod === 'delivery' ? text(formData.get('deliveryAddress'), 500) : null;
+    if (deliveryMethod === 'delivery' && !deliveryAddress) {
+      return NextResponse.json({ error: 'Please add the delivery address, or choose store pickup.' }, { status: 400 });
+    }
 
     const file = formData.get('image');
     const image = file instanceof File && file.size > 0 ? await saveImage(file, 'custom-orders') : null;
@@ -28,6 +33,8 @@ export async function POST(request: Request) {
         message: text(formData.get('message'), 200),
         inspirationLink: text(formData.get('inspirationLink'), 500),
         image,
+        deliveryMethod,
+        deliveryAddress,
         source: text(formData.get('source'), 20) === 'whatsapp' ? 'whatsapp' : 'form',
       },
     });

@@ -15,7 +15,8 @@ export default function LoginPage() {
       if (!result?.ok || result.error) { setError('The email or password was not recognised. Please try again.'); setBusy(false); return; }
       const requested = new URLSearchParams(window.location.search).get('callbackUrl');
       const session = await fetch('/api/auth/session').then(res => res.json());
-      router.push(requested && ['/payment','/orders'].includes(requested) ? requested : ['ADMIN','SUPER_ADMIN'].includes(session?.user?.role) ? '/admin/dashboard' : '/');
+      const role = session?.user?.role;
+      router.push(requested && ['/payment','/orders','/pos'].includes(requested) ? requested : ['ADMIN','SUPER_ADMIN'].includes(role) ? '/admin/dashboard' : role === 'CASHIER' ? '/pos' : '/');
       router.refresh();
     } catch { setError('We could not sign you in. Please try again.'); setBusy(false); }
   };

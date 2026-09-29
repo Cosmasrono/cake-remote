@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
-import { CUSTOM_ORDER_STATUSES, STATUS_LABELS, orderReference } from '@/app/lib/custom-orders';
+import { CUSTOM_ORDER_STATUSES, STATUS_LABELS, handoverLabel, orderReference } from '@/app/lib/custom-orders';
 import { adminReplyMessage, toWhatsAppNumber, whatsappLink } from '@/app/lib/whatsapp';
 
 const ERRORS: Record<string, string> = {
@@ -51,6 +51,7 @@ export default async function CustomOrdersPage({ searchParams }: { searchParams:
 
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <dl className="enquiry-details">
+              <div><dt>Pickup or delivery</dt><dd>{handoverLabel(order)}</dd></div>
               <div><dt>Occasion</dt><dd>{order.occasion || 'Not specified'}</dd></div>
               <div><dt>Preferred date</dt><dd>{order.date || 'Not specified'}</dd></div>
               <div><dt>Flavour</dt><dd>{order.flavor || 'Open to suggestions'}</dd></div>

@@ -67,7 +67,14 @@ export async function GET() {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
-    return NextResponse.json(cartItems);
+    // Show today's price, not the price when the item was added — the same one checkout and the till use.
+    const current = await Promise.all(
+      cartItems.map(async (item) => {
+        const product = await findProduct(item.cakeName, item.cakeType);
+        return product ? { ...item, price: product.price } : item;
+      }),
+    );
+    return NextResponse.json(current);
   } catch (error) {
     console.error('Error fetching cart:', error);
     return NextResponse.json(

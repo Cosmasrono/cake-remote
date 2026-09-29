@@ -56,6 +56,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You are already enrolled and approved for this course!' }, { status: 400 });
     }
 
+    // A prompt already sent for this course in the last 2 minutes: keep waiting on
+    // that one instead of charging the student twice.
+    const recent = await prisma.payment.findMany({
+      where: { userId: session.user.id, status: 'PENDING', createdAt: { gte: new Date(Date.now() - 120_000) } },
+    });
+    const inFlight = recent.find((p) => (p.cartItems as { courseId?: string } | null)?.courseId === course.id);
+    if (inFlight) {
+      return NextResponse.json({
+        message: 'A payment prompt was already sent. Please check your phone.',
+        paymentId: inFlight.id,
+        amount: inFlight.amount,
+        courseTitle: course.title,
+        enrollmentId: enrollment.id,
+      });
+    }
+
     const tempCheckoutId = `COURSE_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const feeAmount = Math.ceil(course.price);
 
@@ -120,8 +136,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error?.response?.data?.error_message || error?.message || 'Failed to initiate course payment' },
-      { status: 500 }
+      { error: 'We could not send the M-Pesa prompt. Check the number and try again.' },
+      { status: 502 }
     );
   }
 }

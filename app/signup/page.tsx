@@ -55,13 +55,20 @@ export default function SignupPage() {
         return;
       }
 
-      setSuccessMessage('Account created successfully! Redirecting to login...');
+      setSuccessMessage('Account created! Signing you in…');
+      const login = await signIn('credentials', {
+        redirect: false,
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+      if (login?.ok && !login.error) {
+        router.push('/');
+        router.refresh();
+        return;
+      }
+      setSuccessMessage('Account created! Please sign in.');
       setIsLoading(false);
-
-      // Redirect to login page after a short delay
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000); // Redirect after 2 seconds
+      setTimeout(() => router.push('/login'), 1500);
 
     } catch (err) {
       console.error('Signup error:', err);

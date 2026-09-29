@@ -5,7 +5,10 @@ import { prisma } from '@/app/lib/prisma';
 
 export async function GET() {
   try {
+    // Public list: never include whatsappLink — it's the paid class group, and
+    // is only revealed by /api/check-payment after a verified payment.
     const courses = await prisma.course.findMany({
+      select: { id: true, title: true, description: true, level: true, price: true, image: true, createdAt: true, updatedAt: true },
       orderBy: {
         createdAt: 'desc'
       }
