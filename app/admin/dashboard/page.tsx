@@ -39,7 +39,7 @@ export default async function AdminDashboardPage() {
             Launch POS Terminal ⚡
           </Link>
           <Link href="/" className="bakery-button secondary">
-            View storefront
+            Home page
           </Link>
         </div>
       </div>
@@ -62,6 +62,7 @@ export default async function AdminDashboardPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {[
+          { path: '/', title: 'Home page', description: 'Visit the bakery storefront.' },
           { path: '/pos', title: 'POS Terminal', description: 'Open the point-of-sale checkout counter for staff.', isTerminal: true },
           { path: '/admin/pos-sales', title: 'POS Sales & Reports', description: 'Review counter register sales, cashier totals, and receipts.' },
           { path: '/admin/cakes', title: 'Cake collection', description: 'Add, edit, and manage your cakes.' },
