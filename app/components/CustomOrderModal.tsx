@@ -114,7 +114,7 @@ export default function CustomOrderModal({ isOpen, onClose }: CustomOrderModalPr
               <ChefHat className="w-8 h-8 text-[#713c46]" />
               <Dialog.Title className="text-2xl font-bold">Custom cake enquiry</Dialog.Title>
             </div>
-            <button onClick={onClose} aria-label="Close custom cake enquiry" className="text-gray-500 hover:text-gray-700">
+            <button onClick={onClose} aria-label="Close custom cake enquiry" className="p-2.5 -m-2.5 text-gray-500 hover:text-gray-700">
               <X className="w-6 h-6" />
             </button>
           </div>

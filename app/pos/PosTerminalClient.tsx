@@ -74,6 +74,8 @@ export default function PosTerminalClient({
 
   // Cart / Ticket State
   const [cart, setCart] = useState<PosCartItem[]>([]);
+  // Phones show one panel at a time: the products, or the ticket.
+  const [mobileView, setMobileView] = useState<'products' | 'ticket'>('products');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [discountType, setDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
@@ -427,6 +429,7 @@ export default function PosTerminalClient({
     );
     setActiveOnlineOrder({ id: order.id, source: order.source });
     setShowOnlineOrdersModal(false);
+    setMobileView('ticket');
   };
 
   // Add custom off-menu item
@@ -497,6 +500,7 @@ export default function PosTerminalClient({
     setMpesaRequestId('');
     setAmountPaid('');
     setActiveOnlineOrder(null);
+    setMobileView('products');
   };
 
   // Cash sale, or an M-Pesa code typed in by an admin.
@@ -676,9 +680,9 @@ export default function PosTerminalClient({
         </div>
       )}
       {/* ================= POS TOP BAR ================= */}
-      <header className="bg-white border-b border-stone-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-xs z-30">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="wordmark text-2xl!">
+      <header className="bg-white border-b border-stone-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 shrink-0 shadow-xs z-30">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <Link href="/" className="wordmark text-2xl! hidden sm:block">
             Japhe&apos;s
             <span className="text-[7px]! tracking-widest text-[#713c46]">POS TERMINAL</span>
           </Link>
@@ -690,11 +694,12 @@ export default function PosTerminalClient({
               setOrderAlerts([]);
               setShowOnlineOrdersModal(true);
             }}
-            className="flex items-center gap-2 bg-[#fdf2ef] hover:bg-[#fae2dc] text-[#713c46] border border-[#f3cec4] px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all relative"
+            className="flex items-center gap-2 bg-[#fdf2ef] hover:bg-[#fae2dc] text-[#713c46] border border-[#f3cec4] px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-full text-xs font-semibold transition-all relative whitespace-nowrap"
             title="Incoming orders from website or delivery"
           >
             <FaGlobe className="text-sm" />
-            <span>Website &amp; Delivery Orders</span>
+            <span className="hidden sm:inline">Website &amp; Delivery Orders</span>
+            <span className="sm:hidden">Orders</span>
             {newOrderCount > 0 && (
               <span className="bg-[#713c46] text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
                 {newOrderCount} New
@@ -716,8 +721,9 @@ export default function PosTerminalClient({
           {/* VIEW ALL POS SALES & RECEIPTS BUTTON */}
           <button
             onClick={loadSalesHistory}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors"
             title="View POS Sales Ledger and Reprint Receipts"
+            aria-label="Sales history and receipts"
           >
             <FaReceipt className="text-[#713c46]" />
             <span className="hidden sm:inline">Sales History &amp; Receipts</span>
@@ -725,7 +731,7 @@ export default function PosTerminalClient({
         </div>
 
         {/* Live Clock & Cashier Info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <div className="hidden xl:flex items-center gap-1.5 text-xs text-stone-500 font-mono">
             <FaClock className="text-stone-400" />
             <span>{currentTime}</span>
@@ -733,8 +739,9 @@ export default function PosTerminalClient({
 
           <button
             onClick={handleLoadShiftSummary}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-colors"
             title="Today's Shift Register Sales"
+            aria-label="Register stats"
           >
             <FaChartLine className="text-[#713c46]" />
             <span className="hidden sm:inline">Register Stats</span>
@@ -744,14 +751,14 @@ export default function PosTerminalClient({
           {['ADMIN', 'SUPER_ADMIN'].includes(cashier.role) && (
             <Link
               href="/admin/pos-sales"
-              className="px-3 py-1.5 rounded-lg bg-[#713c46]/10 hover:bg-[#713c46]/20 text-[#713c46] text-xs font-semibold transition-colors"
+              className="hidden md:inline-block px-3 py-1.5 rounded-lg bg-[#713c46]/10 hover:bg-[#713c46]/20 text-[#713c46] text-xs font-semibold transition-colors"
               title="View Complete Admin Audit & Analytics"
             >
               Reports 📊
             </Link>
           )}
 
-          <div className="flex items-center gap-2 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200 text-xs">
+          <div className="hidden md:flex items-center gap-2 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200 text-xs">
             <FaUserCircle className="text-stone-400 text-base" />
             <div>
               <p className="font-semibold text-stone-800 leading-tight">{cashier.name}</p>
@@ -765,6 +772,7 @@ export default function PosTerminalClient({
             onClick={() => signOut({ callbackUrl: '/login' })}
             className="p-2 rounded-lg text-stone-400 hover:text-red-700 hover:bg-red-50 transition-colors"
             title="Lock / Sign Out Cashier"
+            aria-label="Sign out of the till"
           >
             <FaSignOutAlt className="text-base" />
           </button>
@@ -774,7 +782,7 @@ export default function PosTerminalClient({
       {/* ================= MAIN SPLIT CONTENT ================= */}
       <div className="flex-1 flex overflow-hidden">
         {/* ================= LEFT: PRODUCT EXPLORER ================= */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#fbfaf8] border-r border-stone-200">
+        <div className={`flex-1 flex-col min-w-0 bg-[#fbfaf8] border-r border-stone-200 ${mobileView === 'ticket' ? 'hidden md:flex' : 'flex'}`}>
           {/* Active online order banner if one is loaded */}
           {activeOnlineOrder && (
             <div className="bg-[#fcf5eb] border-b border-[#f3dfbc] px-4 py-2 flex items-center justify-between text-xs text-amber-900">
@@ -906,13 +914,32 @@ export default function PosTerminalClient({
               </div>
             )}
           </div>
+
+          {/* Phones: jump to the ticket */}
+          {cart.length > 0 && (
+            <div className="md:hidden shrink-0 p-3 border-t border-stone-200 bg-white">
+              <button
+                onClick={() => setMobileView('ticket')}
+                className="bakery-button w-full py-3 text-sm! font-bold flex justify-between"
+              >
+                <span>View ticket · {cart.reduce((s, i) => s + i.quantity, 0)} items</span>
+                <span className="font-mono">{formatKes(total)} →</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ================= RIGHT: TICKET / CART PANEL ================= */}
-        <div className="w-[360px] md:w-[420px] bg-white flex flex-col shrink-0 border-l border-stone-200 shadow-lg z-20">
+        <div className={`w-full md:w-[360px] lg:w-[420px] bg-white flex-col shrink-0 border-l border-stone-200 shadow-lg z-20 ${mobileView === 'products' ? 'hidden md:flex' : 'flex'}`}>
           {/* Ticket Header */}
-          <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50/70">
-            <div>
+          <div className="p-4 border-b border-stone-200 flex items-center justify-between gap-2 bg-stone-50/70">
+            <button
+              onClick={() => setMobileView('products')}
+              className="md:hidden px-3 py-2 -ml-1 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-700"
+            >
+              ← Add items
+            </button>
+            <div className="flex-1">
               <h3 className="font-serif text-lg font-bold text-stone-900 leading-tight">
                 Current Order
               </h3>
@@ -1086,7 +1113,7 @@ export default function PosTerminalClient({
       {/* ================= MODAL: INCOMING ONLINE / DELIVERY ORDERS ================= */}
       {showOnlineOrdersModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-2xl w-full p-6 animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-2xl w-full p-4 sm:p-6 animate-in fade-in zoom-in duration-150 max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center pb-3 border-b border-stone-100 shrink-0">
               <div className="flex items-center gap-2">
                 <FaGlobe className="text-[#713c46] text-xl" />
@@ -1217,7 +1244,7 @@ export default function PosTerminalClient({
       {/* ================= MODAL: SALES HISTORY & RECEIPTS (WHERE TO SEE POS SALES) ================= */}
       {showSalesHistoryModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-3xl w-full p-6 animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-3xl w-full p-4 sm:p-6 animate-in fade-in zoom-in duration-150 max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center pb-3 border-b border-stone-100 shrink-0">
               <div className="flex items-center gap-2">
                 <FaReceipt className="text-[#713c46] text-xl" />
@@ -1269,6 +1296,7 @@ export default function PosTerminalClient({
               ) : filteredHistory.length === 0 ? (
                 <p className="text-center py-10 text-stone-400 text-sm">No sales found</p>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase text-stone-500">
                     <tr>
@@ -1310,6 +1338,7 @@ export default function PosTerminalClient({
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </div>
@@ -1461,7 +1490,7 @@ export default function PosTerminalClient({
       {/* ================= MODAL: CHECKOUT & PAYMENT ================= */}
       {showCheckoutModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-lg w-full p-6 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
             {/* Header */}
             <div className="flex justify-between items-center pb-4 border-b border-stone-100">
               <div>
@@ -1691,7 +1720,7 @@ export default function PosTerminalClient({
       {/* ================= MODAL: RECEIPT & PRINT ================= */}
       {showReceiptModal && completedSale && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-sm w-full p-6 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-sm w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
             {/* Success icon */}
             <div className="text-center mb-4 no-print">
               <FaCheckCircle className="text-4xl text-emerald-600 mx-auto mb-2" />
@@ -1816,7 +1845,7 @@ export default function PosTerminalClient({
       {/* ================= MODAL: TODAY'S SHIFT / REGISTER STATS ================= */}
       {showShiftModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-lg w-full p-6 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-150">
             <div className="flex justify-between items-center pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <FaCashRegister className="text-[#713c46] text-xl" />
