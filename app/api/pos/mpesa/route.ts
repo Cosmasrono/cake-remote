@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { getAppSession } from '@/app/lib/auth-options';
-import { formatKenyanPhoneNumber, initiatePayHeroStkPush } from '@/app/lib/payhero';
+import { formatKenyanPhoneNumber, initiatePayHeroStkPush, getPayHeroConfig } from '@/app/lib/payhero';
 import { PosSaleError, STAFF_ROLES, prepareSale } from '@/app/lib/pos-sale';
 import { reconcilePosMpesa } from '@/app/lib/pos-mpesa';
 
@@ -17,6 +17,10 @@ export async function POST(request: Request) {
   const user = await staffSession();
   if (!user) return NextResponse.json({ error: 'Please sign in to the till.' }, { status: 401 });
 
+  try { getPayHeroConfig(); } catch {
+    return NextResponse.json({ error: 'M-Pesa is not configured. Ask an administrator to check System Reports.' }, { status: 503 });
+  }
+
   let requestId: string | undefined;
   try {
     const body = await request.json();
@@ -24,6 +28,8 @@ export async function POST(request: Request) {
     if (!/^0[17]\d{8}$/.test(phone)) throw new PosSaleError('Enter the customer’s M-Pesa number, e.g. 0712 345 678.');
 
     const sale = await prepareSale(body, user.role);
+    // The provider rounds to whole shillings; never charge more than the recorded ticket.
+    if (!Number.isInteger(sale.total)) throw new PosSaleError('M-Pesa prompts require a whole-shilling total. Adjust the ticket or use another payment method.');
     const cashierName = user.name || user.email || 'Cashier';
     const created = await prisma.posMpesaRequest.create({
       data: {

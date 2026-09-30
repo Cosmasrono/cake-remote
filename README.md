@@ -20,7 +20,39 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## User access
+## System reports and M-Pesa
+
+Open **Admin Dashboard → System Reports** for date-filtered sales, payment
+statuses, expense categories, estimated profit/loss, users, enrolments, enquiries
+and catalogue counts. Export CSV or use Print / Save PDF. Current user/catalogue
+counts are labelled separately from activity in the selected period. Payment
+records use creation dates, not settlement dates; unrecorded costs, taxes and
+refunds are not part of the estimated balance.
+
+M-Pesa uses PayHero. Configure `PAYHERO_API_USERNAME`, `PAYHERO_API_PASSWORD`,
+`PAYHERO_CHANNEL_ID`, and a public HTTPS `PAYHERO_CALLBACK_URL` ending in
+`/api/mpesa/callback`. Alternatively, set a public HTTPS `APP_URL` from which the
+callback is derived. The reports page checks configuration, not provider access.
+See [PayHero's documentation](https://docs.payhero.co.ke/).
+
+After setup, a live acceptance check must verify an STK prompt, the full paid
+amount, callback/status reconciliation, one receipt, and one entry in reports.
+Also test cancellation and repeated callbacks. Never treat a queued prompt as
+a completed payment. POS STK payments require whole-shilling totals.
+
+## Chatbot setup
+
+The dashboard includes a chatbot configured by the server-only
+`AGENTROUTER_API_KEY`, `AGENTROUTER_BASE_URL`, and `AGENTROUTER_MODEL` variables.
+The base URL should include `/v1`; the app calls `/chat/completions`.
+Only admins and super admins can use it. Chat history stays in browser memory
+until you leave the dashboard. Up to five recent exchanges accompany each question.
+The optional summary shares current-month sales, expenses and category totals;
+customer records and individual expense descriptions are excluded.
+The chatbot cannot change application records. Existing expense insights continue
+to use the separate Groq configuration.
+
+## Managing users
 
 In **Admin Dashboard → Staff & User Directory**, use **Disable** to block an
 account or **Enable** to allow it to sign in again. Disabling revokes existing

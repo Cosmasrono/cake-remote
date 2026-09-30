@@ -46,7 +46,7 @@ export function getPayHeroConfig() {
     callbackUrl = `${appUrl}/api/mpesa/callback`;
   }
 
-  if (!username || !password || !channelId) {
+  if (!username || !password || !channelId || !Number.isInteger(channelId) || channelId <= 0) {
     throw new Error('PayHero credentials not fully configured. Please set PAYHERO_API_USERNAME, PAYHERO_API_PASSWORD, and PAYHERO_CHANNEL_ID in .env');
   }
 

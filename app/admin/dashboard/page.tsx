@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
+import AdminChat from './AdminChat';
 
 export default async function AdminDashboardPage() {
   const session = await getAppSession();
@@ -60,11 +61,14 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
+      <AdminChat />
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {[
           { path: '/', title: 'Home page', description: 'Visit the bakery storefront.' },
           { path: '/pos', title: 'POS Terminal', description: 'Open the point-of-sale checkout counter for staff.', isTerminal: true },
           { path: '/admin/pos-sales', title: 'POS Sales & Reports', description: 'Review counter register sales, cashier totals, and receipts.' },
+          { path: '/admin/reports', title: 'System Reports', description: 'Users, sales, expenses, profit and loss, and M-Pesa readiness.' },
           { path: '/admin/expenses', title: 'Expenses', description: 'Record spending and get AI insights on profit.' },
           { path: '/admin/cakes', title: 'Cake collection', description: 'Add, edit, and manage your cakes.' },
           { path: '/admin/courses', title: 'Baking courses', description: 'Create courses and enrolment details.' },
