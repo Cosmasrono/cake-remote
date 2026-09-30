@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { EnrollmentStatus } from '@prisma/client';
 import { getAppSession } from '@/app/lib/auth-options';
 import { prisma } from '@/app/lib/prisma';
-import { initiatePayHeroStkPush, formatKenyanPhoneNumber } from '@/app/lib/payhero';
+import { initiatePayHeroStkPush, formatKenyanPhoneNumber, getPayHeroConfig } from '@/app/lib/payhero';
 
 export async function POST(request: NextRequest) {
   let payment: any = null;
@@ -12,6 +12,10 @@ export async function POST(request: NextRequest) {
     const session = await getAppSession();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized. Please log in to enroll.' }, { status: 401 });
+    }
+
+    try { getPayHeroConfig(); } catch {
+      return NextResponse.json({ error: 'M-Pesa payments are unavailable right now. Choose "Enquire before paying" and our team will contact you.' }, { status: 503 });
     }
 
     const { courseId, phoneNumber, customerName, isTestMode } = await request.json();

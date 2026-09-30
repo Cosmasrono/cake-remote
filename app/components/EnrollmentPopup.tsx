@@ -19,6 +19,8 @@ function EnrollmentForm({ isOpen, onClose, onEnroll, courseId, userName, isSubmi
   const [paymentId, setPaymentId] = useState('');
   const [paid, setPaid] = useState(false);
   const [group, setGroup] = useState('');
+  const [timedOut, setTimedOut] = useState(false);
+  const [pollRound, setPollRound] = useState(0);
   useEffect(() => {
     if (!paymentId || !isOpen) return;
     let stopped = false;
@@ -33,12 +35,12 @@ function EnrollmentForm({ isOpen, onClose, onEnroll, courseId, userName, isSubmi
         if (res.ok && ['failed','cancelled'].includes(data.status)) { setError('Payment was not completed. Please try again.'); setPaymentId(''); setBusy(false); return; }
       } catch { /* Retry transient network failures. */ }
       if (stopped) return;
-      if (++attempts >= 40) { setError('Confirmation is taking longer than expected. Check My courses in a few minutes before paying again.'); setBusy(false); return; }
+      if (++attempts >= 40) { setTimedOut(true); setBusy(false); return; }
       timer = setTimeout(poll, 3000);
     };
     timer = setTimeout(poll, 2000);
     return () => { stopped = true; clearTimeout(timer); };
-  }, [paymentId, isOpen]);
+  }, [paymentId, isOpen, pollRound]);
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = new FormData(e.currentTarget); const phone = String(form.get('phone') || '');
     if (mode === 'enquiry') { onEnroll(phone); return; }
@@ -52,7 +54,7 @@ function EnrollmentForm({ isOpen, onClose, onEnroll, courseId, userName, isSubmi
   };
   return <><div className="flex justify-between items-start gap-4"><div><p className="eyebrow">YOUR NEXT CHAPTER</p><DialogTitle className="font-serif text-3xl">{paid ? 'Welcome to the school.' : course?.title || 'Course enrolment'}</DialogTitle></div><button className="icon-button" aria-label="Close enrolment" onClick={onClose}><X size={20} /></button></div>
     {paid ? <div className="mt-6"><p className="text-sm leading-7">Your payment has been confirmed. You can find this course and its class group any time under My courses.</p>{group && <a href={group} target="_blank" rel="noopener noreferrer" className="bakery-button mt-6">Join your class group</a>}<Link href="/orders" className="text-link">View payment details →</Link></div> :
-    <>{error && <p className="notice mt-5" role="alert">{error}</p>}{paymentId ? <div className="mt-6"><p className="text-sm leading-7" role="status">Check your phone for the M-Pesa prompt. Enter your PIN on your phone to complete payment.</p><Link className="text-link" href="/orders">Check My orders →</Link></div> : !course ? <p className="py-6" role="status">{loadError ? 'We could not load this course. Please close and try again.' : 'Loading course details…'}</p> : <form onSubmit={submit} className="mt-6"><p className="text-sm text-stone-600 mb-5 leading-7">{course.description}</p><div className="checkout-total mb-6"><span>{course.level}</span><strong>{formatToKsh(course.price)}</strong></div><label>How would you like to enrol?<select value={mode} onChange={e => setMode(e.target.value)}><option value="pay">Pay with M-Pesa</option><option value="enquiry">Enquire before paying</option></select></label><label>Phone number<input name="phone" type="tel" inputMode="tel" autoComplete="tel" required placeholder="0712 345 678" /></label><button className="bakery-button" disabled={busy || isSubmitting}>{busy || isSubmitting ? 'Please wait…' : mode === 'pay' ? 'Pay ' + formatToKsh(course.price) : 'Send enrolment enquiry'}</button><p className="text-xs text-stone-500 mt-4 leading-6">{mode === 'pay' ? 'Payment is confirmed with M-Pesa before your enrolment is approved.' : 'Our team will follow up to discuss the course and next steps.'}</p></form>}</>}
+    <>{error && <p className="notice mt-5" role="alert">{error}</p>}{paymentId ? <div className="mt-6"><p className="text-sm leading-7" role="status">{timedOut ? 'Confirmation is taking longer than expected. If you entered your PIN, your payment may still go through.' : 'Check your phone for the M-Pesa prompt. Enter your PIN on your phone to complete payment.'}</p>{timedOut && <div className="flex flex-wrap gap-3 mt-4"><button type="button" className="bakery-button" onClick={() => { setTimedOut(false); setPollRound(n => n + 1); }}>Check again</button><button type="button" className="bakery-button secondary" onClick={() => { setTimedOut(false); setPaymentId(''); }}>I did not get a prompt</button></div>}<Link className="text-link" href="/orders">Check My orders →</Link></div> : !course ? <p className="py-6" role="status">{loadError ? 'We could not load this course. Please close and try again.' : 'Loading course details…'}</p> : <form onSubmit={submit} className="mt-6"><p className="text-sm text-stone-600 mb-5 leading-7">{course.description}</p><div className="checkout-total mb-6"><span>{course.level}</span><strong>{formatToKsh(course.price)}</strong></div><label>How would you like to enrol?<select value={mode} onChange={e => setMode(e.target.value)}><option value="pay">Pay with M-Pesa</option><option value="enquiry">Enquire before paying</option></select></label><label>Phone number<input name="phone" type="tel" inputMode="tel" autoComplete="tel" required placeholder="0712 345 678" /></label><button className="bakery-button" disabled={busy || isSubmitting}>{busy || isSubmitting ? 'Please wait…' : mode === 'pay' ? 'Pay ' + formatToKsh(course.price) : 'Send enrolment enquiry'}</button><p className="text-xs text-stone-500 mt-4 leading-6">{mode === 'pay' ? 'Payment is confirmed with M-Pesa before your enrolment is approved.' : 'Our team will follow up to discuss the course and next steps.'}</p></form>}</>}
   </>;
 }
 

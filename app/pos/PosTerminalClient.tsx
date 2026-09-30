@@ -268,7 +268,7 @@ export default function PosTerminalClient({
 
   // Show waiting orders in the browser tab, so they're noticed from another tab.
   useEffect(() => {
-    const base = 'POS Terminal · Japhe\'s';
+    const base = 'POS Terminal · Nimu\'s';
     const waiting = onlineOrders.filter((o) => o.stage === 'NEW').length;
     document.title = waiting ? `(${waiting}) New order${waiting > 1 ? 's' : ''} · ${base}` : base;
   }, [onlineOrders]);
@@ -683,7 +683,7 @@ export default function PosTerminalClient({
       <header className="bg-white border-b border-stone-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 shrink-0 shadow-xs z-30">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Link href="/" className="wordmark text-2xl! hidden sm:block">
-            Japhe&apos;s
+            Nimu&apos;s
             <span className="text-[7px]! tracking-widest text-[#713c46]">POS TERMINAL</span>
           </Link>
 
@@ -1734,7 +1734,7 @@ export default function PosTerminalClient({
               className="bg-stone-50 p-4 rounded-xl border border-dashed border-stone-300 text-xs font-mono text-stone-800 space-y-2.5"
             >
               <div className="text-center pb-2 border-b border-dashed border-stone-300">
-                <p className="font-serif text-lg font-bold text-stone-900">JAPHE&apos;S BAKERY</p>
+                <p className="font-serif text-lg font-bold text-stone-900">NIMU&apos;S BAKERY AND RESTAURANT</p>
                 <p className="text-[10px] text-stone-500">Fresh Artisan Bakes &amp; Kitchen</p>
                 <p className="text-[9px] text-stone-400">Tel: +254 712 345 678</p>
               </div>
@@ -1814,7 +1814,7 @@ export default function PosTerminalClient({
               </div>
 
               <div className="text-center pt-2 text-[10px] text-stone-500">
-                <p>Thank you for visiting Japhe&apos;s!</p>
+                <p>Thank you for visiting Nimu&apos;s!</p>
               </div>
             </div>
 

@@ -24,7 +24,7 @@ export default function Header({ activeTab, setActiveTab, onCartClick }: Props) 
   return <header className="bakery-header">
     <a href="#main-content" className="skip-link">Skip to content</a>
     <div className="bakery-container header-inner">
-      <button className="wordmark" onClick={() => navigate('home')} aria-label="Japhe's home">Japhe&apos;s<span>CAKES & BAKING SCHOOL</span></button>
+      <button className="wordmark" onClick={() => navigate('home')} aria-label="Nimu's home">Nimu&apos;s<span>BAKERY AND RESTAURANT</span></button>
       <nav className="desktop-nav" aria-label="Main navigation">{nav.map(item => <button key={item.id} onClick={() => navigate(item.id)} aria-current={(item.id === activeTab || item.id === 'shawarma' && ['pizza', 'burger'].includes(activeTab)) ? 'page' : undefined}>{item.label}</button>)}</nav>
       <div className="header-actions">
         {/* On phones these move into the menu, so the header keeps just the bag and menu button. */}

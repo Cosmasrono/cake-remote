@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import type { ReportPeriod } from '@/app/lib/pos-report-range';
 
-export default function PosReportFilters({ period, date, start, end }: {
-  period: ReportPeriod; date: string; start: string; end: string;
+export default function PosReportFilters({ period, date, start, end, action = '/admin/pos-sales' }: {
+  period: ReportPeriod; date: string; start: string; end: string; action?: string;
 }) {
   const [selectedPeriod, setSelectedPeriod] = useState(period);
   const [startDate, setStartDate] = useState(start);
@@ -12,7 +12,7 @@ export default function PosReportFilters({ period, date, start, end }: {
   const inputClass = 'block mt-1 border border-stone-300 rounded px-3 py-2 bg-white text-stone-900';
 
   return (
-    <form action="/admin/pos-sales" method="GET" className="checkout-panel mb-6">
+    <form action={action} method="GET" className="checkout-panel mb-6">
       <div className="flex flex-wrap items-end gap-4">
         <label className="text-sm text-stone-600">
           Period

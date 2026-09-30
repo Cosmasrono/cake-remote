@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useCallbackUrl } from '@/app/lib/callback-url';
 import { UserPlus, Mail, Lock, User } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
+  const callbackUrl = useCallbackUrl();
+  const loginHref = callbackUrl ? '/login?callbackUrl=' + encodeURIComponent(callbackUrl) : '/login';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -62,17 +65,17 @@ export default function SignupPage() {
         password: formData.password,
       });
       if (login?.ok && !login.error) {
-        router.push('/');
+        router.push(callbackUrl || '/');
         router.refresh();
         return;
       }
       setSuccessMessage('Account created! Please sign in.');
       setIsLoading(false);
-      setTimeout(() => router.push('/login'), 1500);
+      setTimeout(() => router.push(loginHref), 1500);
 
     } catch (err) {
       console.error('Signup error:', err);
-      setError('Something went wrong');
+      setError('We could not reach the server. Check your connection and try again.');
       setIsLoading(false);
     }
   };
@@ -181,7 +184,7 @@ export default function SignupPage() {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#713c46] font-semibold hover:underline">
+            <Link href={loginHref} className="text-[#713c46] font-semibold hover:underline">
               Sign in
             </Link>
           </p>

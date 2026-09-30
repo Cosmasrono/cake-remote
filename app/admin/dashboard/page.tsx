@@ -31,7 +31,7 @@ export default async function AdminDashboardPage() {
     <main className="bakery-container bakery-section">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">JAPHE&apos;S ADMINISTRATION</p>
+          <p className="eyebrow">NIMU&apos;S ADMINISTRATION</p>
           <h1 className="font-serif text-4xl">The bakery, at a glance.</h1>
         </div>
         <div className="flex gap-3">
@@ -65,6 +65,7 @@ export default async function AdminDashboardPage() {
           { path: '/', title: 'Home page', description: 'Visit the bakery storefront.' },
           { path: '/pos', title: 'POS Terminal', description: 'Open the point-of-sale checkout counter for staff.', isTerminal: true },
           { path: '/admin/pos-sales', title: 'POS Sales & Reports', description: 'Review counter register sales, cashier totals, and receipts.' },
+          { path: '/admin/expenses', title: 'Expenses', description: 'Record spending and get AI insights on profit.' },
           { path: '/admin/cakes', title: 'Cake collection', description: 'Add, edit, and manage your cakes.' },
           { path: '/admin/courses', title: 'Baking courses', description: 'Create courses and enrolment details.' },
           { path: '/admin/orders', title: 'Online Orders & Payments', description: 'Review web customer payments.' },

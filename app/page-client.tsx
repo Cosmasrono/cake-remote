@@ -18,10 +18,11 @@ import EnrollmentPopup from './components/EnrollmentPopup';
 import { useSession } from 'next-auth/react';
 import { Session } from 'next-auth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function CakeSchoolWebsite() {
   const router = useRouter();
-  const { data: session } = useSession() as { data: Session | null };
+  const { data: session, status: authStatus } = useSession() as { data: Session | null; status: string };
   const [activeTab, updateActiveTab] = useState('home');
   const setActiveTab = (tab: string) => { updateActiveTab(tab); window.history.pushState(null, '', '#' + tab); window.scrollTo({ top: 0, behavior: 'instant' }); };
   useEffect(() => { const sync = () => { const tab = window.location.hash.slice(1); if (['home', 'cakes', 'shawarma', 'burger', 'pizza', 'school', 'courses', 'orders'].includes(tab)) updateActiveTab(tab); else updateActiveTab('home'); }; sync(); window.addEventListener('popstate', sync); window.addEventListener('hashchange', sync); return () => { window.removeEventListener('popstate', sync); window.removeEventListener('hashchange', sync); }; }, []);
@@ -41,9 +42,9 @@ export default function CakeSchoolWebsite() {
   };
 
   // Unified Add to Cart — works for Cakes, Shawarma, Burgers, Pizza
-  const askToSignIn = (message = 'Please sign in or create an account to add items to your bag.') => {
+  const askToSignIn = (message = 'Please sign in or create an account to add items to your bag.', returnTo?: string) => {
     showToast(message, 'error');
-    setTimeout(() => router.push('/login'), 1500);
+    setTimeout(() => router.push(returnTo ? '/login?callbackUrl=' + encodeURIComponent(returnTo) : '/login'), 1500);
   };
 
   const handleAddToCart = async (name: string, cakeType: string, price: number, image: string) => {
@@ -72,7 +73,7 @@ export default function CakeSchoolWebsite() {
   };
 
   const handleEnrollCourse = (courseId: string) => {
-    if (!session?.user?.id) return askToSignIn('Please sign in or create an account to enrol.');
+    if (!session?.user?.id) return askToSignIn('Please sign in or create an account to enrol.', '/#school');
     setSelectedCourseId(courseId);
     setShowEnrollmentPopup(true);
   };
@@ -171,6 +172,19 @@ export default function CakeSchoolWebsite() {
             {/* Admin Panel (Logged-in users only) */}
             {activeTab === 'admin' && session?.user && (
               <AdminTab showToast={showToast} />
+            )}
+
+            {/* Signed-out visitors who open an account-only tab */}
+            {['courses', 'orders'].includes(activeTab) && !session?.user && (
+              authStatus === 'loading' ? (
+                <p className="empty-state" role="status">Loading your account…</p>
+              ) : (
+                <div className="empty-state">
+                  <h2>{activeTab === 'orders' ? 'Sign in to see your orders.' : 'Sign in to see your courses.'}</h2>
+                  <p>Your orders and courses are saved to your account.</p>
+                  <Link href={'/login?callbackUrl=' + encodeURIComponent('/#' + activeTab)} className="bakery-button">Sign in</Link>
+                </div>
+              )
             )}
 
             {/* Track Orders (Logged-in users only) */}

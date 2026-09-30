@@ -5,8 +5,8 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// In Next.js dev mode, if the cached Prisma instance was created before posSale was added, refresh it
-if (globalForPrisma.prisma && !(globalForPrisma.prisma as any).posSale) {
+// Refresh the development client when newly added models are missing from the cached instance.
+if (globalForPrisma.prisma && (!globalForPrisma.prisma.posSale || !globalForPrisma.prisma.expense)) {
   globalForPrisma.prisma = undefined;
 }
 

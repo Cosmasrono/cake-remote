@@ -13,6 +13,9 @@ model User {
   email     String   @unique
   password  String
   role      UserRole   @default(USER)
+  isActive  Boolean    @default(true)
+  deletedAt DateTime?
+  sessionVersion Int  @default(0)
   pin       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -206,4 +209,21 @@ model PosMpesaRequest {
   updatedAt    DateTime @updatedAt
 
   @@map("pos_mpesa_requests")
+}
+
+model Expense {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  date           DateTime // The day the money was spent (midnight, Kenya time)
+  amount         Float
+  category       String   // One of EXPENSE_CATEGORIES in app/lib/expenses.ts
+  description    String
+  vendor         String?
+  paymentMethod  String   // "CASH" | "MPESA" | "BANK" | "OTHER"
+  reference      String?  // Receipt number or M-Pesa code
+  recordedById   String   @db.ObjectId
+  recordedByName String
+  createdAt      DateTime @default(now())
+
+  @@index([date])
+  @@map("expenses")
 }

@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { getAppSession } from '@/app/lib/auth-options';
 import bcrypt from 'bcryptjs';
+import { userManagementError } from '@/app/lib/user-access';
+import { archivedAccountEmail, createManagedUser, DuplicateAccountError } from '@/app/lib/create-managed-user';
+import { sendAccountEmail } from '@/app/lib/account-email';
+import { Prisma, type UserRole } from '@prisma/client';
+
+// MongoDB accounts created before this field was added have no deletedAt key.
+const visibleUsers = { OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] };
+const userFields = { id: true, name: true, email: true, role: true, isActive: true, createdAt: true } as const;
 
 export async function GET() {
   const session = await getAppSession();
@@ -11,11 +19,13 @@ export async function GET() {
 
   try {
     const users = await prisma.user.findMany({
+      where: visibleUsers,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -48,37 +58,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Enter a valid email and a password of at least 8 characters.' }, { status: 400 });
     }
 
-    const existing = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
-    });
-
-    if (existing) {
-      return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 });
-    }
-
     const validRoles = ['USER', 'CASHIER', 'ADMIN'];
     const assignedRole = validRoles.includes(role) ? role : 'CASHIER';
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: {
+    const newUser = await createManagedUser({
         name,
         email,
         password: hashedPassword,
-        role: assignedRole,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
+        role: assignedRole as UserRole,
     });
 
-    return NextResponse.json({ success: true, user: newUser });
+    let emailStatus: 'sent' | 'failed' = 'sent';
+    try {
+      await sendAccountEmail(newUser, password);
+    } catch {
+      // Never log the credentials, SMTP configuration or email body.
+      emailStatus = 'failed';
+    }
+    return NextResponse.json({ success: true, user: newUser, emailStatus,
+      message: emailStatus === 'sent'
+        ? `Account created. Login details sent to ${newUser.email}.`
+        : 'Account created, but the login email could not be sent. Do not create the account again. Check the email settings or share the login details directly.',
+    }, { status: 201 });
   } catch (error) {
+    if (error instanceof DuplicateAccountError) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return NextResponse.json({ error: 'An account with this email already exists. Refresh the directory to manage it.' }, { status: 409 });
     console.error('Error creating staff user:', error);
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
@@ -91,44 +97,66 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const { userId, role } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+    }
+    const { userId, role, isActive } = body;
 
-    if (!userId || !role) {
-      return NextResponse.json({ error: 'Missing userId or role' }, { status: 400 });
+    if ((role === undefined) === (isActive === undefined)) {
+      return NextResponse.json({ error: 'Choose one change: role or enabled status.' }, { status: 400 });
     }
 
     const validRoles = ['USER', 'CASHIER', 'ADMIN', 'SUPER_ADMIN'];
-    if (typeof userId !== 'string' || !/^[a-f\d]{24}$/i.test(userId) || !validRoles.includes(role)) {
-      return NextResponse.json({ error: 'Invalid role specified' }, { status: 400 });
+    if (typeof userId !== 'string' || !/^[a-f\d]{24}$/i.test(userId) || (role !== undefined && !validRoles.includes(role)) || (isActive !== undefined && typeof isActive !== 'boolean')) {
+      return NextResponse.json({ error: 'Invalid user, role or enabled status.' }, { status: 400 });
     }
-    // Nobody changes their own role — no self-promotion, no accidental lock-out.
-    if (userId === session.user.id) {
-      return NextResponse.json({ error: 'You cannot change your own role.' }, { status: 403 });
-    }
-    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const target = await prisma.user.findFirst({ where: { id: userId, ...visibleUsers }, select: { id: true, role: true, sessionVersion: true } });
     if (!target) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    // Only a super admin may grant SUPER_ADMIN or change a super admin's role.
-    if ((role === 'SUPER_ADMIN' || target.role === 'SUPER_ADMIN') && session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Only a super admin can grant or remove super admin access.' }, { status: 403 });
+    const denied = userManagementError(session.user, target, role);
+    if (denied) {
+      return NextResponse.json({ error: denied }, { status: 403 });
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { role },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        updatedAt: true,
-      },
+      where: { id: userId, role: target.role, ...visibleUsers },
+      data: role !== undefined ? { role } : { isActive, sessionVersion: target.sessionVersion + 1 },
+      select: userFields,
     });
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
     console.error('Error updating user role:', error);
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await getAppSession();
+  if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    const body = await request.json().catch(() => null);
+    const userId = body?.userId;
+    if (typeof userId !== 'string' || !/^[a-f\d]{24}$/i.test(userId)) {
+      return NextResponse.json({ error: 'Invalid user ID.' }, { status: 400 });
+    }
+    const target = await prisma.user.findFirst({ where: { id: userId, ...visibleUsers }, select: { id: true, role: true, sessionVersion: true } });
+    if (!target) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+    const denied = userManagementError(session.user, target);
+    if (denied) return NextResponse.json({ error: denied }, { status: 403 });
+
+    // Retain the record so historical payments, enrolments and cashier sales stay linked.
+    await prisma.user.update({
+      where: { id: userId, role: target.role, ...visibleUsers },
+      data: { isActive: false, deletedAt: new Date(), sessionVersion: target.sessionVersion + 1, email: archivedAccountEmail(userId) },
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return NextResponse.json({ error: 'Failed to delete user. Please refresh and try again.' }, { status: 500 });
   }
 }

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Please fill in your name, email and password.' },
         { status: 400 }
       );
     }
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists' },
-        { status: 400 }
+        { error: 'An account with this email already exists. Please sign in instead.' },
+        { status: 409 }
       );
     }
 

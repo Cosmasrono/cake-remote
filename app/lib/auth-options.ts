@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { getServerSession as nextAuthGetServerSession } from 'next-auth/next';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/app/lib/prisma';
+import { accountCanSignIn, accountSessionIsValid } from '@/app/lib/user-access';
 
 // Typed representation of our extended session user
 export interface AppUser {
@@ -17,9 +18,6 @@ export interface AppSession {
   user: AppUser;
   expires: string;
 }
-
-/** How often a signed-in user's role is re-read from the database. */
-const ROLE_RECHECK_MS = 5 * 60 * 1000;
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -42,7 +40,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: { equals: credentials.email.trim(), mode: 'insensitive' } },
         });
 
-        if (!user) return null;
+        if (!user || !accountCanSignIn(user)) return null;
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
         if (!isPasswordValid) return null;
@@ -52,6 +50,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -61,16 +60,21 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as AppUser).role;
         token.id = user.id;
-        token.roleCheckedAt = Date.now();
+        token.sessionVersion = (user as AppUser & { sessionVersion: number }).sessionVersion;
         return token;
       }
-      // The role lives in the token, so re-read it every few minutes: a demoted
-      // or deleted staff member loses access quickly, not when the token expires.
-      if (token.id && Date.now() - Number(token.roleCheckedAt || 0) > ROLE_RECHECK_MS) {
-        const current = await prisma.user.findUnique({ where: { id: token.id as string }, select: { role: true } });
-        token.role = current?.role ?? '';
-        if (!current) token.id = '';
-        token.roleCheckedAt = Date.now();
+      // Check every authenticated request. Re-enabling an account does not revive old sessions.
+      if (token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, isActive: true, deletedAt: true, sessionVersion: true },
+        });
+        if (!accountSessionIsValid(current, token.sessionVersion)) {
+          token.id = '';
+          token.role = '';
+        } else {
+          token.role = current!.role;
+        }
       }
       return token;
     },
@@ -88,5 +92,6 @@ export const authOptions: NextAuthOptions = {
  * Use this in all API routes instead of calling getServerSession(authOptions) directly.
  */
 export async function getAppSession(): Promise<AppSession | null> {
-  return nextAuthGetServerSession(authOptions) as Promise<AppSession | null>;
+  const session = await nextAuthGetServerSession(authOptions) as AppSession | null;
+  return session?.user?.id ? session : null;
 }

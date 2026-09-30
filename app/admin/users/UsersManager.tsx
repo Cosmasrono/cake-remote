@@ -2,21 +2,24 @@
 
 import { useState } from 'react';
 import { FaUserCircle, FaUserPlus, FaCheck, FaTimes, FaShieldAlt, FaCashRegister } from 'react-icons/fa';
+import { userManagementError } from '@/app/lib/user-access';
 
 interface UserItem {
   id: string;
   name: string;
   email: string;
   role: string;
+  isActive: boolean;
   createdAt: string | Date;
 }
 
-export default function UsersManager({ initialUsers }: { initialUsers: UserItem[] }) {
+export default function UsersManager({ initialUsers, currentUser }: { initialUsers: UserItem[]; currentUser: { id: string; role: string } }) {
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // New user form state
   const [formData, setFormData] = useState({
@@ -47,12 +50,14 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
         throw new Error(data.error || 'Failed to create user');
       }
 
-      setUsers([data.user, ...users]);
-      setSuccess(`Staff account for ${data.user.name} created successfully!`);
+      setUsers((previous) => [data.user, ...previous]);
+      setSuccess(data.message || 'Account created.');
+      setNotification({ message: data.message || 'Account created.', type: data.emailStatus === 'failed' ? 'error' : 'success' });
       setShowAddModal(false);
       setFormData({ name: '', email: '', password: '', role: 'CASHIER' });
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setNotification({ message: err instanceof Error ? err.message : 'Could not create the account.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +66,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
   const handleRoleChange = async (userId: string, newRole: string) => {
     setUpdatingUserId(userId);
     setError('');
+    setSuccess('');
 
     try {
       const res = await fetch('/api/admin/users', {
@@ -74,9 +80,36 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
         throw new Error(data.error || 'Failed to update role');
       }
 
-      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update user role');
+      setUsers((previous) => previous.map((u) => (u.id === userId ? data.user : u)));
+      setSuccess('User role updated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update user role');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleAccountAction = async (user: UserItem, action: 'enable' | 'disable' | 'delete') => {
+    const prompt = action === 'delete'
+      ? `Delete ${user.name} (${user.email})? They will lose access and be removed from this directory. Sales and payment history will be retained. Their email can be used for a new account.`
+      : `Disable ${user.name} (${user.email})? Their current sessions will lose access. You can enable them again later.`;
+    if (action !== 'enable' && !window.confirm(prompt)) return;
+    setUpdatingUserId(user.id);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: action === 'delete' ? 'DELETE' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action === 'delete' ? { userId: user.id } : { userId: user.id, isActive: action === 'enable' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update this account.');
+      setUsers((previous) => action === 'delete' ? previous.filter((u) => u.id !== user.id) : previous.map((u) => u.id === user.id ? data.user : u));
+      setSuccess(`${user.name}'s account ${action === 'delete' ? 'deleted' : action === 'enable' ? 'enabled. They can sign in again' : 'disabled'}.`);
+      setNotification({ message: `${user.name}'s account ${action === 'delete' ? 'deleted. Their email can now be reused' : action === 'enable' ? 'enabled' : 'disabled'}.`, type: 'success' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update this account.');
     } finally {
       setUpdatingUserId(null);
     }
@@ -110,6 +143,12 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
 
   return (
     <div>
+      {notification && (
+        <div role={notification.type === 'error' ? 'alert' : 'status'} className={`fixed top-5 right-5 left-5 sm:left-auto sm:max-w-md z-[100] rounded-lg border p-4 shadow-lg flex items-start gap-3 ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-red-50 border-red-300 text-red-900'}`}>
+          <p className="text-sm">{notification.message}</p>
+          <button type="button" aria-label="Dismiss notification" onClick={() => setNotification(null)}><FaTimes /></button>
+        </div>
+      )}
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
@@ -131,13 +170,13 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
         </button>
       </div>
 
-      {error && (
+      {error && !showAddModal && (
         <div className="notice mb-6" role="alert">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-4 mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-sm flex items-center gap-2">
+        <div role="status" className="p-4 mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-sm flex items-center gap-2">
           <FaCheck className="text-emerald-600" />
           {success}
         </div>
@@ -152,14 +191,16 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                 <th className="px-6 py-3.5">User</th>
                 <th className="px-6 py-3.5">Email</th>
                 <th className="px-6 py-3.5">Current Role</th>
+                <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5">Change Access</th>
                 <th className="px-6 py-3.5">Registered</th>
+                <th className="px-6 py-3.5">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-sm">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-stone-500">
+                  <td colSpan={7} className="px-6 py-10 text-center text-stone-500">
                     No users found
                   </td>
                 </tr>
@@ -180,9 +221,14 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getRoleBadge(user.role)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${user.isActive !== false ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'}`}>
+                        {user.isActive !== false ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         aria-label={`Change role for ${user.name}`}
-                        disabled={updatingUserId === user.id || user.role === 'SUPER_ADMIN'}
+                        disabled={!!updatingUserId || !!userManagementError(currentUser, user)}
                         value={user.role}
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
                         className="text-xs border border-stone-300 rounded px-2.5 py-1.5 bg-white text-stone-700 focus:border-[#713c46] focus:ring-1 focus:ring-[#713c46]"
@@ -190,6 +236,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                         <option value="USER">Customer (User)</option>
                         <option value="CASHIER">POS Cashier / Staff</option>
                         <option value="ADMIN">Administrator</option>
+                        {(currentUser.role === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN') && <option value="SUPER_ADMIN">Super administrator</option>}
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-xs text-stone-500">
@@ -198,6 +245,18 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                         month: 'short',
                         year: 'numeric',
                       })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {userManagementError(currentUser, user) ? (
+                        <span className="text-xs text-stone-500">{currentUser.id === user.id ? 'Your account' : 'Super admin access required'}</span>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button type="button" disabled={!!updatingUserId} aria-label={`${user.isActive !== false ? 'Disable' : 'Enable'} ${user.name}`} onClick={() => handleAccountAction(user, user.isActive !== false ? 'disable' : 'enable')} className="border border-stone-300 rounded px-3 py-1.5 text-xs disabled:opacity-50">
+                            {updatingUserId === user.id ? 'Updating…' : user.isActive !== false ? 'Disable' : 'Enable'}
+                          </button>
+                          <button type="button" disabled={!!updatingUserId} aria-label={`Delete ${user.name}`} onClick={() => handleAccountAction(user, 'delete')} className="border border-red-200 text-red-700 rounded px-3 py-1.5 text-xs disabled:opacity-50">Delete</button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -222,6 +281,8 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
             </div>
 
             <form onSubmit={handleCreateUser} className="space-y-4">
+              <p className="text-sm text-stone-600">The account email and password will be sent to the email address below.</p>
+              {error && <p role="alert" className="notice">{error}</p>}
               <div>
                 <label className="block text-xs font-semibold text-stone-700 uppercase mb-1">
                   Full Name
@@ -243,7 +304,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                 <input
                   type="email"
                   required
-                  placeholder="e.g. sarah@japhescakes.com"
+                  placeholder="e.g. sarah@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full border border-stone-300 rounded p-2.5 text-sm"
@@ -257,6 +318,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                 <input
                   type="password"
                   required
+                  minLength={8}
                   placeholder="Temporary login password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -295,7 +357,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: UserItem[
                   disabled={isSubmitting}
                   className="bakery-button text-sm py-2 px-4"
                 >
-                  {isSubmitting ? 'Creating account…' : 'Create Staff Member'}
+                  {isSubmitting ? 'Creating account and sending email…' : 'Create account & email login details'}
                 </button>
               </div>
             </form>

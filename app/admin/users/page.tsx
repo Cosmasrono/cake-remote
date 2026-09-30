@@ -12,11 +12,13 @@ export default async function AdminUsersPage() {
   }
 
   const users = await prisma.user.findMany({
+    where: { OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
+      isActive: true,
       createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
@@ -39,7 +41,7 @@ export default async function AdminUsersPage() {
         </div>
       </div>
 
-      <UsersManager initialUsers={JSON.parse(JSON.stringify(users))} />
+      <UsersManager initialUsers={JSON.parse(JSON.stringify(users))} currentUser={{ id: session.user.id, role: session.user.role }} />
     </main>
   );
 }

@@ -296,7 +296,7 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
               {/* Header */}
               <div className="text-center pb-4 border-b border-dashed border-stone-300">
                 <h3 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
-                  JAPHE&apos;S BAKERY &amp; CAKES
+                  NIMU&apos;S BAKERY AND RESTAURANT
                 </h3>
                 <p className="text-[11px] text-stone-500 mt-1">Artisan Baking &amp; Fresh Kitchen</p>
                 <p className="text-[10px] text-stone-400 mt-0.5">Tel: +254 712 345 678</p>
@@ -385,7 +385,7 @@ export default function PosSalesReports({ initialSales }: { initialSales: PosSal
 
               {/* Footer */}
               <div className="text-center pt-4 text-stone-500 text-[11px] leading-5">
-                <p className="font-medium">Thank you for visiting Japhe&apos;s!</p>
+                <p className="font-medium">Thank you for visiting Nimu&apos;s!</p>
                 <p className="text-[10px] text-stone-400">We appreciate your sweet support.</p>
               </div>
             </div>

@@ -5,7 +5,7 @@ import { PosProduct } from '@/app/lib/pos';
 import PosTerminalClient from './PosTerminalClient';
 
 export const metadata = {
-  title: "Point of Sale (POS) | Japhe's Bakery & Fast Food",
+  title: "Point of Sale (POS) | Nimu's Bakery and Restaurant",
   description: "Touch counter register for in-store orders, fast checkout, and thermal receipts.",
 };
 

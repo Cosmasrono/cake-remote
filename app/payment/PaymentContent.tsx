@@ -7,6 +7,14 @@ import useSWR from 'swr';
 import { ArrowLeft, CheckCircle, Smartphone, ShoppingBag } from 'lucide-react';
 import { formatToKsh } from '@/app/lib/currency';
 
+/** Same rule the server applies: 07xx / 01xx, with or without +254. */
+const isKenyanMobile = (value: string) => {
+  let digits = value.replace(/[^0-9+]/g, '').replace(/^\+/, '');
+  if (digits.startsWith('254') && digits.length === 12) digits = '0' + digits.slice(3);
+  if (/^[17]\d{8}$/.test(digits)) digits = '0' + digits;
+  return /^0[17]\d{8}$/.test(digits);
+};
+
 interface Item { id: string; cakeName: string; quantity: number; price: number; image: string }
 interface Quote { items: Item[]; subtotal: number; deliveryFee: number; total: number }
 interface PaymentResult { status: string; amount: number; mpesaReceiptNumber: string | null; resultDesc?: string }
@@ -22,6 +30,9 @@ export default function PaymentContent() {
   const [paidQuote, setPaidQuote] = useState<Quote | null>(null);
   const [pollExpired, setPollExpired] = useState(false);
   const [podSuccess, setPodSuccess] = useState<any | null>(null);
+  // What the customer typed, so a failed or cancelled payment does not wipe the form.
+  const [details, setDetails] = useState({ name: '', phone: '', address: '', date: '', notes: '' });
+  const [pollRound, setPollRound] = useState(0);
 
   const { data: quote, error: quoteError, isLoading, mutate } = useSWR<Quote>(
     session?.user && !pendingId && !receipt && !podSuccess ? '/api/checkout?deliveryMethod=' + method : null,
@@ -72,7 +83,13 @@ export default function PaymentContent() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [pendingId]);
+  }, [pendingId, pollRound]);
+
+  const checkAgain = () => {
+    setPollExpired(false);
+    setBusy(true);
+    setPollRound((n) => n + 1);
+  };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -81,6 +98,19 @@ export default function PaymentContent() {
     setError('');
     setPollExpired(false);
     const form = new FormData(event.currentTarget);
+    const entered = {
+      name: String(form.get('name') || ''),
+      phone: String(form.get('phone') || ''),
+      address: String(form.get('address') || ''),
+      date: String(form.get('date') || ''),
+      notes: String(form.get('notes') || ''),
+    };
+    setDetails(entered);
+    if (!isKenyanMobile(entered.phone)) {
+      setError('Enter a valid Kenyan mobile number, for example 0712 345 678.');
+      setBusy(false);
+      return;
+    }
 
     const payload = {
       phoneNumber: form.get('phone'),
@@ -103,6 +133,7 @@ export default function PaymentContent() {
         if (!res.ok) {
           setBusy(false);
           setError(data.error || 'Could not place order.');
+          if (res.status === 409) void mutate();
           return;
         }
         setPodSuccess({ ...data, quote });
@@ -138,7 +169,7 @@ export default function PaymentContent() {
     <header className="bakery-header">
       <div className="bakery-container header-inner">
         <Link href="/" className="wordmark">
-          Japhe&apos;s<span>CAKES & BAKING SCHOOL</span>
+          Nimu&apos;s<span>BAKERY AND RESTAURANT</span>
         </Link>
         <Link href="/" className="text-link">
           <ArrowLeft size={15} /> Continue shopping
@@ -249,6 +280,15 @@ export default function PaymentContent() {
               Sign in
             </Link>
           </div>
+        ) : quoteError?.message === 'Your bag is empty.' && !pendingId ? (
+          <div className="empty-state">
+            <ShoppingBag className="mx-auto mb-4 text-[#713c46]" size={32} />
+            <h2>Your bag is empty.</h2>
+            <p>Add something sweet from our collection, then come back to check out.</p>
+            <Link href="/#cakes" className="bakery-button">
+              Browse cakes
+            </Link>
+          </div>
         ) : (
           <div className="checkout-grid">
             <section className="checkout-panel">
@@ -266,9 +306,16 @@ export default function PaymentContent() {
                       ? 'Your payment may still complete. Check My orders before starting another payment.'
                       : 'Enter your M-Pesa PIN on the prompt sent to your phone. This page will update when payment is confirmed.'}
                   </p>
-                  <Link href="/orders" className="bakery-button secondary mt-6">
-                    View my orders
-                  </Link>
+                  <div className="flex flex-wrap gap-3 mt-6">
+                    {pollExpired && (
+                      <button type="button" className="bakery-button" onClick={checkAgain}>
+                        Check again
+                      </button>
+                    )}
+                    <Link href="/orders" className="bakery-button secondary">
+                      View my orders
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={submit}>
@@ -280,7 +327,7 @@ export default function PaymentContent() {
                       autoComplete="name"
                       required
                       maxLength={150}
-                      defaultValue={session.user.name || ''}
+                      defaultValue={details.name || session.user.name || ''}
                     />
                   </label>
                   <label>
@@ -292,6 +339,7 @@ export default function PaymentContent() {
                       autoComplete="tel"
                       required
                       placeholder="0712 345 678"
+                      defaultValue={details.phone}
                     />
                   </label>
                   <label>
@@ -311,6 +359,7 @@ export default function PaymentContent() {
                         maxLength={500}
                         rows={3}
                         placeholder="Area, street, building, apartment/house number"
+                        defaultValue={details.address}
                       />
                     </label>
                   )}
@@ -320,6 +369,7 @@ export default function PaymentContent() {
                       type="date"
                       name="date"
                       min={new Date().toLocaleDateString('en-CA')}
+                      defaultValue={details.date}
                     />
                   </label>
                   <label>
@@ -329,6 +379,7 @@ export default function PaymentContent() {
                       rows={2}
                       maxLength={1000}
                       placeholder="Cake inscriptions, dietary preferences, or directions"
+                      defaultValue={details.notes}
                     />
                   </label>
 
