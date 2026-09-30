@@ -3,8 +3,9 @@
 ## Current environment
 
 The integration uses PayHero for website checkout, course fees and POS STK
-prompts. At review time the local environment had no `PAYHERO_API_USERNAME`,
-`PAYHERO_API_PASSWORD` or `PAYHERO_CHANNEL_ID`. `APP_URL` pointed to localhost.
+prompts. The final runtime check found the PayHero credentials configured.
+A read-only `/payment_channels` request returned HTTP 200 and included the
+configured channel. The derived callback still pointed to localhost.
 Live payments and callback delivery cannot be confirmed in this configuration.
 No payment prompt or charge was initiated during this review.
 

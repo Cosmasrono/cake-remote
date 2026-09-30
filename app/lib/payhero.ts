@@ -135,7 +135,7 @@ export async function getPayHeroTransactionStatus(reference: string): Promise<Pa
     });
 
     return response.data;
-  } catch (error) {
+  } catch {
     console.error('PayHero transaction status check failed.');
     return null;
   }
